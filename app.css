@@ -238,3 +238,189 @@ button,select{padding:0 .75em}
 .trset{width:100%}.trset .trline{width:100%}
 .trset .trline select{flex:1 1 10em;min-width:0;max-width:100%}
 .trset .trline>span.lab,.trset .trline>label{flex:0 0 5.5em}
+
+/* ==STYLES== Éditeur de styles (repris de la page jelhoste.github.io/jjazz-engine-ts) : règles limitées à #stylesTab */
+#stylesTab{position:fixed;inset:0;z-index:30;overflow:auto;display:none;padding:10px 14px 28px;--fg:var(--ink);--card:var(--panel);--on-accent:var(--accent-ink);--now:color-mix(in srgb,var(--accent) 18%,var(--bg));--error:#b3261e;--focus:var(--accent);--bw:1px;--lw:7.6rem;--cw:1.9rem;--k:1}
+#stylesTab.open{display:block}
+@media (prefers-color-scheme:dark){:root:where(:not([data-theme="light"])) #stylesTab{--error:#ff8a80}}
+:root[data-theme="dark"] #stylesTab{--error:#ff8a80}
+#stylesTab .sthead{display:flex;align-items:center;gap:10px;justify-content:space-between;max-width:900px;margin:0 auto 8px}
+#stylesTab .sthead strong{font-size:1.15rem}
+#stylesTab #styRoot,#stylesTab #styMsg{max-width:900px;margin:0 auto}
+#stylesTab #styMsg{margin-top:8px;color:var(--muted);min-height:1.4em}#stylesTab #styMsg.err{color:var(--error)}
+#stylesTab button:focus-visible, #stylesTab select:focus-visible, #stylesTab textarea:focus-visible, #stylesTab input:focus-visible, #stylesTab .dial:focus-visible, #stylesTab summary:focus-visible{outline:3px solid var(--focus); outline-offset:2px;}
+#stylesTab, #stylesTab *{box-sizing: border-box;}
+#stylesTab{margin:0; font:16px/1.4 system-ui, sans-serif; background:var(--bg); color:var(--fg);}
+#stylesTab h1{font-size: 1.25rem; margin: 6px 0 12px;}
+#stylesTab .scard{background:var(--card); border:1px solid var(--line); border-radius:10px; padding:12px; margin-bottom:12px;}
+#stylesTab [hidden]{display:none !important;}
+#stylesTab label{display:block; font-size:.8rem; margin:0 0 3px; opacity:.8; line-height:1.2;}
+#stylesTab textarea, #stylesTab select, #stylesTab input[type=number], #stylesTab input[type=text]{width:100%; font:inherit; padding:6px 8px; border:1px solid var(--line); border-radius:8px; background:var(--bg); color:var(--fg);}
+#stylesTab select, #stylesTab input[type=number], #stylesTab input[type=text]{height:var(--ctl);}
+#stylesTab .titlebar button, #stylesTab .buttons button, #stylesTab .inline button, #stylesTab .seedbox button{min-height:var(--ctl); padding-top:0; padding-bottom:0;}
+#stylesTab textarea{height: 5.5em; font-family: ui-monospace, monospace;}
+#stylesTab .grid{display:grid; gap:10px 12px; margin-top:12px; align-items:end;}
+#stylesTab .g-general{grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));}
+#stylesTab .g-inst{grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); align-items:start;}
+#stylesTab .field{display:flex; flex-direction:column; min-width:0;}
+#stylesTab .field .dial, #stylesTab .field select, #stylesTab .field input[type=number]{width:100%;}
+#stylesTab .seedfield{grid-column: span 2;}
+#stylesTab .seedbox{display:flex; gap:6px;}
+#stylesTab .seedbox input{flex:1; min-width:3rem; text-align:center; font-family:ui-monospace, monospace; font-weight:700;}
+#stylesTab .seedbox button{padding-left:0; padding-right:0; min-width:var(--ctl);}
+#stylesTab .inst{border:1px solid var(--line); border-radius:10px; padding:8px 10px 10px; margin:0; min-width:0; display:grid; grid-template-columns:1fr 1fr; gap:8px; align-content:start;}
+#stylesTab .inst legend{padding:0 6px; font-weight:700; font-size:.9rem;}
+#stylesTab .inst .wide{grid-column:1/-1;}
+#stylesTab .inst .mute{grid-column:1/-1; display:flex; align-items:center; gap:8px; font-size:.85rem; margin-top:2px;}
+#stylesTab .inst .mute label{display:inline; margin:0; opacity:1; font-size:.85rem;}
+#stylesTab .inst details{grid-column:1/-1; margin-top:0;}
+#stylesTab .inst summary{cursor:pointer; padding:6px 0;}
+#stylesTab .inst details .grid{margin-top:6px; grid-template-columns:1fr 1fr;}
+#stylesTab .inst details .grid .full{grid-column:1/-1;}
+#stylesTab #pianoDist{white-space:pre-line; opacity:.8; font-size:.8rem;}
+#stylesTab .buttons{display:flex; flex-wrap:wrap; gap:8px; align-items:center;}
+#stylesTab button{font:inherit; padding:8px 14px; border-radius:8px; border:var(--bw) solid var(--accent); background:var(--accent); color:var(--on-accent); cursor:pointer;}
+#stylesTab button.secondary{background:transparent; color:var(--accent);}
+#stylesTab button:disabled{opacity:.45; cursor:default;}
+#stylesTab #beat{margin-left:auto; font:600 1.1rem ui-monospace, monospace; min-width:4.5em; text-align:right;}
+#stylesTab #chordCards{display:grid; grid-template-columns: repeat(4, 1fr); gap:6px; margin-top:10px;}
+#stylesTab .bar, #stylesTab .addbar{position:relative; min-height:2.7rem; padding:3px 16px 4px; display:flex; align-items:flex-start; justify-content:center; border:1px solid var(--line); border-radius:8px; background:var(--bg); color:var(--fg); font:inherit; font-weight:700; cursor:pointer;}
+#stylesTab .bar small{position:absolute; top:3px; left:5px; font-weight:400; font-size:.68rem; line-height:1; opacity:.6;}
+#stylesTab .bar .chords{display:grid; grid-template-columns:1fr; justify-items:center; gap:0 .4em; font-size:1.7rem; line-height:1.05; width:100%; margin-top:-.04em;}
+#stylesTab .bar .chords.n2{grid-template-columns:1fr 1fr; font-size:1.2rem;}
+#stylesTab .bar .chords.n3, #stylesTab .bar .chords.n4{grid-template-columns:1fr 1fr; font-size:1.05rem;}
+#stylesTab .bar.start{box-shadow:inset 5px 0 0 var(--accent);}
+#stylesTab .bar.start small{background:var(--accent); color:var(--on-accent); padding:2px 4px; border-radius:4px; opacity:1; top:2px; left:8px;}
+#stylesTab .bar.now{background:var(--now); border-color:var(--accent);}
+#stylesTab .bar.sel{outline:2px solid var(--accent);}
+#stylesTab .addbar{display:flex; align-items:center; justify-content:center; font-size:1.6rem; color:var(--accent); border-style:dashed;}
+#stylesTab #stage{position:fixed; inset:0; z-index:15; display:flex; flex-direction:column; background:var(--bg); padding:8px;}
+#stylesTab #stage[hidden]{display:none;}
+#stylesTab .stagebar{display:flex; gap:8px; align-items:center; flex:0 0 auto; padding-bottom:8px;}
+#stylesTab .stagebar .nm{flex:1; font-weight:700; font-size:1.05rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+#stylesTab #stagePlay{font-size:1.15rem; padding:10px 22px;}
+#stylesTab #stageBeat{font:600 1.1rem ui-monospace, monospace; min-width:3.5em; text-align:right;}
+#stylesTab #stageCards{flex:1 1 auto; min-height:0; display:grid; gap:8px;}
+#stylesTab #stageCards .bar{padding:0; min-height:0; overflow:hidden; align-items:center;}
+#stylesTab #stageCards .bar small{font-size:max(.8rem, calc(var(--fs, 30px) * .3)); top:4px; left:8px;}
+#stylesTab #stageCards .bar .chords, #stylesTab #stageCards .bar .chords.n2, #stylesTab #stageCards .bar .chords.n3, #stylesTab #stageCards .bar .chords.n4{font-size:var(--fs, 30px); padding-top:.45em;}
+#stylesTab .titlebar{display:flex; gap:8px; flex-wrap:wrap; align-items:center;}
+#stylesTab .titlebar input[type=text]{flex:1 1 12em; min-width:0; width:auto;}
+#stylesTab .titlebar select{width:auto;}
+#stylesTab .titlebar #preset, #stylesTab .titlebar #trSel{flex:1 1 9em; min-width:0;}
+#stylesTab #songState{font-size:.8rem; opacity:.7;}
+#stylesTab #playCard{position:sticky; top:0; z-index:5; box-shadow:0 4px 14px rgba(0,0,0,.18);}
+#stylesTab #plInfo{font-size:.85rem; margin-top:6px; display:none; gap:8px; align-items:center; flex-wrap:wrap;}
+#stylesTab .sheet{position:fixed; inset:0; z-index:20; display:flex; align-items:flex-end; justify-content:center;}
+#stylesTab .sheet[hidden]{display:none;}
+#stylesTab .sheet-back{position:absolute; inset:0; background:rgba(0,0,0,.45);}
+#stylesTab .sheet-panel{position:relative; width:100%; max-width:900px; max-height:82vh; overflow:auto; background:var(--card); border:1px solid var(--line); border-radius:14px 14px 0 0; padding:12px 14px 16px; box-shadow:0 -8px 30px rgba(0,0,0,.35); animation:up .16s ease-out;}
+@keyframes up{ from { transform:translateY(30px); opacity:.4; } to { transform:none; opacity:1; } }
+#stylesTab .sheet-head{display:flex; align-items:center; gap:8px; margin-bottom:8px;}
+#stylesTab .sheet-head h2{font-size:1.05rem; margin:0; flex:1;}
+#stylesTab .sheet button{padding:7px 12px;}
+#stylesTab button.chip{background:var(--bg); color:var(--fg); border:1px solid var(--line); padding:6px 10px;}
+#stylesTab button.chip.on{background:var(--accent); color:var(--on-accent); border-color:var(--accent);}
+#stylesTab .zones{display:grid; grid-template-columns: 1fr 2fr 1fr; gap:10px; margin-top:10px;}
+#stylesTab .zones h3{font-size:.8rem; margin:0 0 6px; opacity:.75; font-weight:600; display:flex; justify-content:space-between; align-items:center;}
+#stylesTab .zone-grid{display:grid; gap:5px;}
+#stylesTab .zone-grid.c2{grid-template-columns:1fr 1fr;}
+#stylesTab .zone-grid.c3{grid-template-columns:1fr 1fr 1fr;}
+#stylesTab .zone-grid button{padding:9px 4px; text-align:center;}
+#stylesTab #chordSheet .sheet-panel{display:flex; flex-direction:column; overflow:hidden;}
+#stylesTab .zone-grid.q{grid-template-columns: repeat(3, 1fr);}
+#stylesTab #chordPreview{font-size:1.6rem; font-weight:700; min-width:5em;}
+#stylesTab .seg{display:flex; gap:4px; align-items:center; flex-wrap:wrap;}
+#stylesTab .liblist{list-style:none; margin:6px 0 12px; padding:0;}
+#stylesTab .liblist li{display:flex; gap:6px; align-items:center; flex-wrap:wrap; padding:6px 0; border-bottom:1px solid var(--line);}
+#stylesTab .liblist li .nm{flex:1 1 10em; font-weight:600;}
+#stylesTab .liblist li .meta{font-size:.8rem; opacity:.65;}
+#stylesTab .liblist button{padding:4px 9px; font-size:.85rem;}
+#stylesTab .sheet h3.sec{margin:12px 0 2px; font-size:.95rem;}
+@media (max-width: 560px){#stylesTab .zones{grid-template-columns: 1fr 1.35fr 1fr; gap:6px;}
+#stylesTab .zone-grid.c3, #stylesTab .zone-grid.q{grid-template-columns: 1fr 1fr;}
+#stylesTab .zone-grid button{padding:9px 2px; font-size:.82rem;}
+#stylesTab #chordPreview{font-size:1.25rem; min-width:0;}
+#stylesTab .sheet-panel{padding:10px 10px 14px;}
+}
+#stylesTab #status{font-size:.9rem; margin-top:8px; opacity:.85;}
+#stylesTab #status.error{color:var(--error); opacity:1; font-weight:600;}
+#stylesTab input[type=range]{width:100%;}
+#stylesTab .dial{display:grid; grid-template-columns:var(--ctl) 1fr var(--ctl); align-items:center; min-width:6.5rem; height:var(--ctl); border:1px solid var(--line); border-radius:12px; background:var(--bg); color:var(--fg); user-select:none; overflow:hidden;}
+#stylesTab .dial:focus-visible{outline:2px solid var(--accent);}
+#stylesTab .dial-b{height:100%; min-height:0 !important; padding:0 !important; border:0 !important; border-radius:0; background:transparent; color:var(--accent); font:700 1.5rem/1 system-ui, sans-serif; touch-action:manipulation;}
+#stylesTab .dial-b:active:not(:disabled){background:var(--now);}
+#stylesTab .dial-b:disabled{opacity:.3;}
+#stylesTab .dial-v{text-align:center; font:700 1.05rem ui-monospace, monospace;}
+#stylesTab .dial-src{position:absolute; width:1px; height:1px; opacity:0; pointer-events:none;}
+#stylesTab .field{position:relative;}
+#stylesTab{--lw:7.6rem; --cw:1.9rem;}
+#stylesTab .tabs{display:flex; gap:6px; margin:0 0 12px; border-bottom:2px solid var(--line);}
+#stylesTab .tabs button{background:transparent; color:var(--fg); border:0 !important; border-bottom:4px solid transparent !important; border-radius:8px 8px 0 0; padding:0 18px; min-height:var(--ctl); font-weight:700;}
+#stylesTab .tabs button[aria-selected="true"]{color:var(--accent); border-bottom-color:var(--accent) !important;}
+#stylesTab .chk{display:inline-flex; align-items:center; gap:6px; margin:0; opacity:1; font-size:.9rem;}
+#stylesTab .note{font-size:.85rem; opacity:.8; margin:8px 0 0;}
+#stylesTab .g-style{grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));}
+#stylesTab .previewbar{position:sticky; top:0; z-index:5; box-shadow:0 4px 14px rgba(0,0,0,.18);}
+#stylesTab .previewbar .titlebar > select{flex:1 1 11em; min-width:0;}
+#stylesTab .previewbar .stp{min-width:9rem;}
+#stylesTab .stp .dial{width:100%;}
+#stylesTab .varbar{display:flex; gap:8px; flex-wrap:wrap; align-items:center;}
+#stylesTab .varbar button{min-height:var(--ctl);}
+#stylesTab .varbar .lbl{font-weight:700; font-size:.9rem;}
+#stylesTab .lane h3{margin:0; font-size:1rem;}
+#stylesTab .laneHead{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:8px;}
+#stylesTab .laneHead select{width:auto;}
+#stylesTab .laneHead button{min-height:var(--ctl);}
+#stylesTab .gridwrap{overflow-x:auto; border:1px solid var(--line); border-radius:8px; background:var(--bg);}
+#stylesTab .stepgrid{display:grid; position:relative; width:max-content;}
+#stylesTab .rl{position:sticky; left:0; z-index:2; background:var(--card); font-size:.75rem; padding:0 6px; display:flex; align-items:center; min-height:2.1rem; white-space:nowrap; border-bottom:1px solid var(--line); border-right:2px solid var(--line);}
+#stylesTab .cell{height:2.1rem; min-height:0 !important; padding:0 !important; border:0 !important; border-bottom:1px solid var(--line) !important; border-left:1px solid color-mix(in srgb, var(--line) 45%, transparent) !important; border-radius:0 !important; background:var(--bg); color:var(--fg); font-size:.8rem; line-height:1; touch-action:manipulation;}
+#stylesTab .cell.beatline{border-left:1px solid var(--line) !important;}
+#stylesTab .cell.barline{border-left:3px solid var(--fg) !important;}
+#stylesTab .cell.infill{background:color-mix(in srgb, var(--accent) 10%, var(--bg));}
+#stylesTab .cell.tail{background:color-mix(in srgb, var(--accent) 38%, var(--bg));}
+#stylesTab .cell.on{background:var(--accent); color:var(--on-accent);}
+#stylesTab .cell.on.auto{background:color-mix(in srgb, var(--accent) 75%, var(--fg));}
+#stylesTab .cell.on.prob{background-image:repeating-linear-gradient(135deg, transparent 0 4px, rgba(255,255,255,.45) 4px 7px);}
+#stylesTab .cell.apr-::after{content:'↓';}
+#stylesTab .cell.apr\+::after{content:'↑';}
+#stylesTab .cell.sel{outline:3px solid var(--fg); outline-offset:-3px;}
+#stylesTab .playhead{position:absolute; top:0; bottom:0; background:rgba(255,190,0,.28); pointer-events:none; z-index:1; border-left:2px solid #d98a00;}
+#stylesTab .varbar{margin-bottom:8px;}
+#stylesTab .varbar .varname{width:9rem; min-height:var(--ctl);}
+#stylesTab .varbar .chip.fillchip{border-style:dashed;}
+#stylesTab .octbar{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:8px;}
+#stylesTab .octbar button{min-height:var(--ctl);}
+#stylesTab .octbar .warn{color:var(--error); font-weight:700;}
+#stylesTab .rl.blk{background:color-mix(in srgb, var(--fg) 22%, var(--card));}
+#stylesTab .rl.scale{font-weight:700;}
+#stylesTab .rl.apr{font-style:italic;}
+#stylesTab .cell.blk{background:color-mix(in srgb, var(--fg) 9%, var(--bg));}
+#stylesTab .cell.blk.on{background:var(--accent);}
+#stylesTab .cell.blk.tail{background:color-mix(in srgb, var(--accent) 38%, var(--bg));}
+#stylesTab .legend{margin-top:8px;}
+#stylesTab .importpanel{border:1px dashed var(--accent); border-radius:8px; padding:10px; margin-bottom:10px; display:grid; gap:10px;}
+#stylesTab .importpanel .titlebar button{min-height:var(--ctl);}
+#stylesTab .impsum p{margin:2px 0;}
+#stylesTab .impsum .warn{color:var(--error); font-weight:700;}
+#stylesTab .lane.full{position:fixed; inset:0; z-index:40; margin:0; border-radius:0; overflow:auto; background:var(--card); padding:10px 12px 24px;}
+#stylesTab .lane.full .laneHead{position:sticky; top:0; z-index:6; background:var(--card); padding:4px 0 8px; margin-bottom:4px; border-bottom:1px solid var(--line);}
+#stylesTab .lane.full .gridwrap{max-height:none;}
+body.styfull{overflow:hidden;}
+#stylesTab h2.sect{font-size:1rem; margin:0 0 8px;}
+#stylesTab, #stylesTab{--ctl: 2.15rem;}
+#stylesTab{font-size:14px; --k:1.142857;}
+#stylesTab{--cw:calc(1.9rem * var(--k));}
+#stylesTab .inspector{margin-top:10px; padding-top:8px; border-top:1px solid var(--line); display:grid; gap:10px;}
+#stylesTab .insprow{display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:10px 12px;}
+#stylesTab .inspector > button{justify-self:start; min-height:var(--ctl);}
+#stylesTab .inline{display:flex; gap:12px 16px; flex-wrap:wrap; align-items:center; margin-top:12px; font-size:.9rem;}
+#stylesTab .inline label{display:inline; margin:0; opacity:1;}
+#stylesTab details{margin-top:6px; font-size:.9rem;}
+#stylesTab code{background:var(--bg); padding:1px 4px; border-radius:4px;}
+@media (max-width: 560px){#stylesTab #chordCards{grid-template-columns: repeat(2, 1fr);}
+}
+@media (min-width: 900px){#stylesTab #chordCards{grid-template-columns: repeat(6, 1fr);}
+}
+

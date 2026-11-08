@@ -51,7 +51,7 @@ function structureToChord(s){
 // Versions. APP_VERSION : l'appli (semver). SCHEMA_VERSION : format des fichiers d'export et des liens de partage (entier, +1 à chaque
 // changement incompatible ; les ajouts de champs ne le changent pas). Format 3 : la grille est une suite d'ÉVÉNEMENTS d'accords placés
 // à (mesure, temps) ; un accord dure jusqu'à l'événement suivant. Aucune lecture des formats 1 et 2 (jamais publiés).
-const APP_VERSION='2.2.0', SCHEMA_VERSION=3, DB_VERSION='chords-db 0.5.1';
+const APP_VERSION='2.3.0', SCHEMA_VERSION=3, DB_VERSION='chords-db 0.5.1';
 let BPB=4; const MAX_BARS=128, METERS=[3,4,5,6];   // temps par mesure (3, 4, 5 ou 6 ; réglé par setMeter, écrit dans le champ « meter » des fichiers), mesures au plus
 const meterOf=d=>{ const m=Math.round(parseFloat(d&&d.meter)); return METERS.includes(m)?m:4; };   // « 3 », 3 ou « 3/4 » -> 3 ; absent ou inconnu -> 4
 const setMeter=m=>{ BPB=METERS.includes(m)?m:4; };
@@ -1592,6 +1592,52 @@ accCount.onchange=()=>pref('accCount',accCount.value);
 $('accNew').onclick=()=>{ accSeed=1+Math.floor(Math.random()*99999); if(accOn){ stopAcc(); startAcc(); } else accSetMsg('Nouvelle version prête : elle sera jouée au prochain départ.'); };
 Object.entries(accTg).forEach(([k,b])=>{ b.onclick=()=>{ tgSet(b,!tgOn(b)); pref('acc_'+k,tgOn(b)?'1':'0'); }; });
 // ==/ACCOMP==
+
+/* ===== 78-styles.js ===== */
+// ==STYLES== Éditeur de styles : séquenceur à pas (repris de la page jelhoste.github.io/jjazz-engine-ts), relié à la liste des styles d'accompagnement
+let styUi=null, stySeq={on:false,k:0,opt:{},len:0};
+const stEl=$('stylesTab'), stMsg=$('styMsg');
+// Lecteur : même interface que celui de la page d'origine, posé sur le synthé de la PWA (Snd)
+const styPlayer={
+  unlock(){ Snd.wantDrums=true; Snd.ready(); },
+  setOptions(o){ Object.assign(stySeq.opt,o); },
+  isPlaying(){ return stySeq.on; },
+  currentBeat(){ return stySeq.k/TPB; },
+  stop(){ if(stySeq.on){ stySeq.on=false; Snd.stop(); } },
+  async start(events,tempo,lengthBeats,onEnd){
+    if(!Snd.ready()) throw new Error(NOSOUND);
+    const m=events.reduce((a,e)=>Math.min(a,e.beat),0), ev=events.map(e=>({...e,beat:e.beat-m})), len=Math.max(1,Math.round((lengthBeats-m)*TPB));
+    if(Snd.sfOn()){ const ps=[...new Set(ev.filter(e=>e.track==='drums').map(e=>e.pitch))]; await new Promise(r=>Snd.sfWarmKit(0,ps,r)); Snd.setKit(0); } else if(Snd.sf) Snd.setKit(0);
+    const slots=Array.from({length:len},()=>null);
+    ev.forEach(e=>{ const k=Math.min(len-1,Math.round(e.beat*TPB)); (slots[k]||(slots[k]=[])).push(e); });
+    const sec=()=>60/tempo/TPB, mute={drums:'muteDrums',bass:'muteBass',piano:'mutePiano'}, vol={drums:'drumsVolume',bass:'bassVolume',piano:'pianoVolume'};
+    stySeq.on=true; stySeq.k=0;
+    const ok=Snd.sequence(sec,len,(s,when)=>{
+      const d=sec()*TPB;
+      (slots[s]||[]).forEach(e=>{ if(stySeq.opt[mute[e.track]]) return; Snd.play(e.track,e.pitch,Math.min(127,Math.round(e.vel??e.velocity)),when,e.durationBeats*d*0.97); });
+    },{loop:true,onUi:k=>{ stySeq.k=k; },onEnd:()=>{ stySeq.on=false; onEnd&&onEnd(); }});
+    if(!ok){ stySeq.on=false; throw new Error(NOSOUND); }
+  }
+};
+function stStatus(t,err){ stMsg.textContent=t||''; stMsg.classList.toggle('err',!!err); }
+function stGet(){
+  if(styUi) return styUi;
+  styUi=new JJEngine.StyleUi($('styRoot'),{
+    store:JJEngine.store(), engine:()=>JJEngine.ready()?JJEngine.rawEngine():null, player:styPlayer,
+    stopSong(){ if(accOn) stopAcc(); if(listening) stopListen(); if(training) trStop(); },
+    songGrid:()=>engineText(chords), status:stStatus, changed(){ accStyleFill(); }, sound:()=>({})
+  });
+  return styUi;
+}
+function stOpen(){
+  if(accOn) stopAcc(); if(listening) stopListen(); if(training) trStop();
+  JJEngine.warm(); stStatus('');
+  stGet().show(); stEl.classList.add('open'); document.body.style.overflow='hidden'; $('stX').focus();
+}
+function stClose(){ stGet().hide(); styPlayer.stop(); stEl.classList.remove('open'); document.body.style.overflow=''; stStatus(''); accStyleFill(); $('stylesB').focus(); }
+$('stylesB').onclick=stOpen; $('stX').onclick=stClose;
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&stEl.classList.contains('open')&&!document.body.classList.contains('styfull')) stClose(); });
+// ==/STYLES==
 
 /* ===== 80-lib-print.js ===== */
 // ==LIB==

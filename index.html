@@ -54,6 +54,7 @@
 <button id="accB" aria-pressed="false">Jouer avec accompagnement</button>
 <label class="inl">Style<select id="accStyle"></select></label>
 <label class="inl">Décompte<select id="accCount"><option value="0">Aucun</option><option value="1">1 mesure</option><option value="2">2 mesures</option></select></label>
+<button class="sec" id="stylesB" title="Créer ou modifier des styles d'accompagnement (batterie, basse, claviers) dans un séquenceur à pas">Éditeur de styles</button>
 <button class="sec" id="accNew" title="Régénère l'accompagnement (basse, batterie, piano) avec d'autres variations">Nouvelle version</button>
 <span class="tgs" role="group" aria-label="Pistes jouées"><button class="tg" id="accBs" role="switch" aria-checked="true">Basse</button><button class="tg" id="accDr" role="switch" aria-checked="true">Batterie</button><button class="tg" id="accPn" role="switch" aria-checked="true">Piano</button><button class="tg" id="accGt" role="switch" aria-checked="false" title="Joue aussi les diagrammes affichés (guitare ou piano selon l'onglet)">Diagrammes</button></span>
 <details class="pj" id="pjBox"><summary>Jeu du piano</summary>
@@ -117,6 +118,7 @@
 <p class="hint" id="dwarn" aria-live="polite" style="margin:8px 0 0"></p>
 <div class="acts"><button id="dsave">Enregistrer</button><button class="sec" id="ddel">Supprimer ce diagramme</button></div>
 </div></div>
+<div id="stylesTab" role="dialog" aria-modal="true" aria-labelledby="stT"><div class="sthead"><strong id="stT">Éditeur de styles</strong><button class="sec" id="stX">Fermer</button></div><div id="styRoot"></div><p id="styMsg" role="status" aria-live="polite"></p></div>
 <div id="tsheet" class="ovl"><div class="back" id="tback"></div>
 <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="tT">
 <div class="sh"><strong id="tT">Transposer la grille</strong><button class="sec" id="tcancel">Fermer</button></div>
