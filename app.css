@@ -165,3 +165,56 @@ input[type=checkbox]{width:24px;height:24px;margin:0;flex:none}
 details.gtxt{margin:10px 0 0}
 details.gtxt summary{cursor:pointer;color:var(--accent);padding:10px 0;min-height:24px}
 textarea#gtxt{border:1px solid var(--line);border-radius:8px;padding:8px;background:var(--bg);color:var(--ink)}
+.meterrow{display:flex;align-items:center;gap:10px;margin:10px 0 6px}
+.meterrow #meterLab{font-weight:600}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg button{border:0;border-radius:0;background:transparent;color:var(--ink);min-width:2.6em;padding:6px 10px;font:inherit;cursor:pointer}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-checked="true"]{background:var(--accent);color:var(--accent-ink)}
+.seg button:disabled{opacity:.5}
+/* Feuilles du bas : fenêtres génériques */
+.ovl{position:fixed;inset:0;display:none;z-index:10}.ovl.open{display:block}
+.drow{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:8px 0}
+.stp{display:inline-flex;align-items:center;gap:8px}
+.stp>span{min-width:6.5em;text-align:center;font-weight:600}
+.seg.wide{display:flex;width:100%}.seg.wide button{flex:1;padding:10px 8px}
+.warnbox{margin:10px 0 0;padding:10px 12px;border-radius:calc(var(--radius)*.8);border:1px solid var(--pivot);background:var(--warn);color:var(--ink);font-size:.92rem}
+.warnbox[hidden]{display:none}
+/* Manche de guitare de l'éditeur d'accord libre */
+.fb{display:grid;grid-template-columns:2.2em repeat(6,minmax(0,1fr));max-width:340px;margin:6px auto 2px;--fh:46px}
+.fb .fl,.fb .sn{display:flex;align-items:center;justify-content:center;font-size:.8rem;color:var(--muted)}
+.fb .fc,.fb .fh{position:relative;height:var(--fh);padding:0;border:0;border-radius:0;background:transparent;color:var(--ink);cursor:pointer;min-width:0}
+.fb .fh{height:36px;font-size:1.15rem;font-weight:700}
+.fb .fc::before{content:"";position:absolute;left:50%;top:0;bottom:0;width:2px;margin-left:-1px;background:currentColor;opacity:.7}
+.fb .fc::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:2px;background:currentColor;opacity:.55}
+.fb .fc.nut::after{opacity:.55}
+.fb .fc.nut{border-top:5px solid var(--ink)}
+.fb .fc:focus-visible,.fb .fh:focus-visible{outline:3px solid var(--accent);outline-offset:-3px;z-index:2}
+.fb .dot{position:absolute;left:50%;top:50%;width:30px;height:30px;margin:-15px 0 0 -15px;border-radius:50%;background:var(--accent);color:var(--accent-ink);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.95rem;z-index:1}
+.fb .barre{align-self:center;height:30px;margin:0 2px;border-radius:15px;background:var(--accent);opacity:.55;pointer-events:none;z-index:0}
+#dfb{touch-action:manipulation}
+.mrow{display:flex;flex-direction:column;gap:4px;font-size:.85rem;color:var(--muted)}
+/* Mise en page : une ligne = un rôle, mêmes hauteurs, alignées au centre */
+select,button{min-height:44px}
+.settings{display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center;margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
+.settings .inl,.tools .inl,.meterrow,.drow{min-height:44px}
+.settings .inl>select{min-width:8em}
+.inl{display:inline-flex;flex-direction:row;align-items:center;gap:8px;font-size:.85rem;color:var(--muted)}
+.tg{white-space:nowrap}
+.tgs{display:inline-flex;flex-wrap:wrap;gap:6px}
+.tools{gap:8px 10px;align-items:center}
+.hint:empty{display:none}
+.tmsg{margin:-4px 0 8px}
+.meterrow{flex-wrap:wrap}
+.seg button{min-height:40px;min-width:2.4em}
+.panel .tools:first-child{margin-bottom:6px}
+.tabs{margin-bottom:10px}
+.tools#listen,.tools#acc{padding:10px 0 0;margin:0 0 4px}
+.tools#acc{border-top:1px dashed var(--line)}
+@media (max-width:520px){ .settings .inl>select{min-width:0} .tools .inl>select{max-width:62vw} }
+.ovl .sheet{max-height:94vh;overflow-y:auto}
+@media (max-height:760px){ .fb{--fh:36px} .fb .dot{width:26px;height:26px;margin:-13px 0 0 -13px} .fb .barre{height:26px} }
+.pj{flex-basis:100%;border-top:1px dashed var(--line);padding-top:8px}
+.pj summary{cursor:pointer;color:var(--accent);min-height:32px;display:flex;align-items:center}
+.pjrow{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin:6px 0;font-size:.85rem;color:var(--muted)}
+.pjrow>span:first-child{min-width:9em}

@@ -22,32 +22,43 @@
 <h1>Diagrammes d'accords</h1>
 <p class="lead">Composez votre grille mesure par mesure (une case par temps) : la page choisit pour chaque accord le doigté le plus facile à enchaîner pour un débutant.</p>
 <div class="panel">
-<div class="tools"><button class="sec" id="presets">Grilles types (blues, pop…)</button><button class="sec" id="libB">Mes grilles</button><button class="sec" id="exp">Exporter</button><button class="sec" id="impB">Importer</button><button id="shr">Partager</button><button class="sec" id="prtB">Imprimer</button><input type="file" id="imp" accept=".json,application/json" hidden><span id="msg" class="hint" style="margin:0" aria-live="polite"></span></div>
+<div class="tools"><button class="sec" id="presets">Grilles types (blues, pop…)</button><button class="sec" id="transB">Transposer</button><button class="sec" id="libB">Mes grilles</button><button class="sec" id="exp">Exporter</button><button class="sec" id="impB">Importer</button><button id="shr">Partager</button><button class="sec" id="prtB">Imprimer</button><input type="file" id="imp" accept=".json,application/json" hidden><span id="msg" class="hint" style="margin:0" aria-live="polite"></span></div>
+<div class="meterrow"><span id="meterLab">Mesure</span><div id="meterSeg" class="seg" role="radiogroup" aria-labelledby="meterLab"></div><span class="hint" style="margin:0">temps</span></div>
 <div id="slots" class="chips" aria-label="Grille d'accords : une case par temps"></div>
 <details id="txtBox" class="gtxt"><summary>Saisir ou copier la grille en texte</summary>
 <p class="hint" style="margin:6px 0">Mesures séparées par « | » ; plusieurs accords dans une mesure se partagent les temps ; « % » : l'accord continue ; « . » : un temps de plus pour l'accord (ex. « Am . . F »).</p>
 <textarea id="gtxt" rows="3" spellcheck="false" aria-label="Grille en texte" style="width:100%;font:inherit"></textarea>
 <div class="acts"><button id="gapply">Appliquer le texte</button><span id="gmsg" class="hint" style="margin:0" aria-live="polite"></span></div></details>
-<div class="row">
-<label>Niveau<select id="lvl"><option value="full">Complet (7, maj7, m7)</option><option value="easy">Simplifié (accords de base)</option></select></label>
-<label id="capoL">Capo<select id="capo"></select></label>
-<label id="strgL">Cordes<select id="strg"><option value="0">Uniformes</option><option value="1">Épaisseurs réalistes</option></select></label>
-<label id="digL">Chiffres dans les ronds<select id="dgt"><option value="1">Affichés</option><option value="0">Masqués</option></select></label>
-<label>Thème<select id="thm"><option value="auto">Auto</option><option value="light">Clair</option><option value="dark">Sombre</option></select></label>
-<label>Doigts en place<select id="pvt"><option value="0">Masqués</option><option value="1">Affichés</option></select></label>
-
+<div class="settings" role="group" aria-label="Réglages d'affichage">
+<label class="inl" id="capoL">Capo<select id="capo"></select></label>
+<button class="tg" id="lvlT" role="switch" aria-checked="false" data-for="lvl" data-on="easy" title="Remplace m7 et maj7 par des accords de base">Accords simplifiés</button>
+<button class="tg" id="strgT" role="switch" aria-checked="false" data-for="strg" data-on="1" title="Cordes de différentes épaisseurs dans les diagrammes">Cordes réalistes</button>
+<button class="tg" id="dgtT" role="switch" aria-checked="false" data-for="dgt" data-on="1" title="Numéros de doigts dans les ronds">Numéros de doigts</button>
+<button class="tg" id="pvtT" role="switch" aria-checked="false" data-for="pvt" data-on="1" title="Colore en jaune ce qui ne bouge pas d'un accord au suivant">Doigts en place</button>
+<span class="inl">Thème<span class="seg" id="thmSeg" role="radiogroup" aria-label="Thème" data-for="thm"><button role="radio" data-v="auto" aria-checked="false">Auto</button><button role="radio" data-v="light" aria-checked="false">Clair</button><button role="radio" data-v="dark" aria-checked="false">Sombre</button></span></span>
+<select id="lvl" hidden><option value="full">Complet</option><option value="easy">Simplifié</option></select>
+<select id="strg" hidden><option value="0">Uniformes</option><option value="1">Réalistes</option></select>
+<select id="dgt" hidden><option value="1">Affichés</option><option value="0">Masqués</option></select>
+<select id="pvt" hidden><option value="0">Masqués</option><option value="1">Affichés</option></select>
+<select id="thm" hidden><option value="auto">Auto</option><option value="light">Clair</option><option value="dark">Sombre</option></select>
 </div>
 <div id="sugg"><span id="suggT"></span><button id="suggB">Appliquer</button></div>
 </div>
 <div class="tabs"><div class="tl" role="tablist"><button role="tab" id="tabG" aria-selected="true">Guitare</button><button role="tab" id="tabP" aria-selected="false">Piano</button></div>
 <div class="vt" role="group" aria-label="Affichage"><button class="sec" id="zOut" aria-label="Réduire les diagrammes" title="Réduire les diagrammes">−</button><span id="zLab" aria-live="polite">100 %</span><button class="sec" id="zIn" aria-label="Agrandir les diagrammes" title="Agrandir les diagrammes">+</button><button class="sec" id="lockB" aria-pressed="false" aria-label="Verrouiller l'interface (appui long)" title="Appui long pour verrouiller"><svg class="ic-open" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 7.5-1.8"/></svg><svg class="ic-closed" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></button></div></div>
-<div class="tools" id="listen" role="group" aria-label="Écoute"><button id="playB" aria-pressed="false">Écouter la grille</button><label class="inl">Tempo<select id="bpm"><option>50</option><option>60</option><option>70</option><option selected>80</option><option>90</option><option>100</option><option>110</option><option>120</option><option>130</option><option>140</option><option>150</option><option>160</option><option>180</option><option>200</option><option>220</option></select></label><label class="inl"><input type="checkbox" id="loopB"> En boucle</label><label class="inl">Son<select id="snd"><option value="sf-steel">Banque : guitare acier</option><option value="sf-nylon">Banque : guitare nylon</option><option value="builtin">Intégré (léger)</option></select></label><span id="sndMsg" class="hint" style="margin:0" aria-live="polite"></span><button id="trainB" class="sec" aria-haspopup="dialog">Entraînement</button></div>
+<div class="tools" id="listen" role="group" aria-label="Écoute"><button id="playB" aria-pressed="false">Écouter la grille</button><label class="inl">Tempo<select id="bpm"><option>50</option><option>60</option><option>70</option><option selected>80</option><option>90</option><option>100</option><option>110</option><option>120</option><option>130</option><option>140</option><option>150</option><option>160</option><option>180</option><option>200</option><option>220</option></select></label><button class="tg" id="loopT" role="switch" aria-checked="false" data-for="loopB">En boucle</button><input type="checkbox" id="loopB" hidden><label class="inl">Son<select id="snd"><option value="sf-steel">Banque : guitare acier</option><option value="sf-nylon">Banque : guitare nylon</option><option value="builtin">Intégré (léger)</option></select></label><button id="trainB" class="sec" aria-haspopup="dialog">Entraînement</button></div>
+<p id="sndMsg" class="hint tmsg" aria-live="polite"></p>
 <div class="tools" id="acc" role="group" aria-label="Accompagnement automatique">
 <button id="accB" aria-pressed="false">Jouer avec accompagnement</button>
 <label class="inl">Style<select id="accStyle"></select></label>
 <label class="inl">Décompte<select id="accCount"><option value="0">Aucun</option><option value="1">1 mesure</option><option value="2">2 mesures</option></select></label>
 <button class="sec" id="accNew" title="Régénère l'accompagnement (basse, batterie, piano) avec d'autres variations">Nouvelle version</button>
 <span class="tgs" role="group" aria-label="Pistes jouées"><button class="tg" id="accBs" role="switch" aria-checked="true">Basse</button><button class="tg" id="accDr" role="switch" aria-checked="true">Batterie</button><button class="tg" id="accPn" role="switch" aria-checked="true">Piano</button><button class="tg" id="accGt" role="switch" aria-checked="false" title="Joue aussi les diagrammes affichés (guitare ou piano selon l'onglet)">Diagrammes</button></span>
+<details class="pj" id="pjBox"><summary>Jeu du piano</summary>
+<div class="pjrow"><span id="pjL1">Frappes</span><span class="seg" id="pjMode" role="radiogroup" aria-labelledby="pjL1"><button role="radio" data-v="patterns" aria-checked="true">Motifs complets</button><button role="radio" data-v="sampled" aria-checked="false">Aéré</button></span></div>
+<div class="pjrow"><span id="pjL2">Accords de passage</span><span class="seg" id="pjApp" role="radiogroup" aria-labelledby="pjL2"><button role="radio" data-v="none" aria-checked="true">Aucun</button><button role="radio" data-v="chromatic" aria-checked="false">Chromatiques</button><button role="radio" data-v="mixed" aria-checked="false">Variés</button></span></div>
+<div class="pjrow"><span id="pjL3">Force</span><span class="seg" id="pjInt" role="radiogroup" aria-labelledby="pjL3"><button role="radio" data-v="-5" aria-checked="false">Douce</button><button role="radio" data-v="0" aria-checked="true">Normale</button><button role="radio" data-v="5" aria-checked="false">Forte</button></span></div>
+<p class="hint" style="margin:6px 0 0">« Aéré » : quelques frappes tirées au hasard dans les motifs. Les accords de passage s'ajoutent sur le dernier temps (jazz, mesures à 4 temps). Utilisez « Nouvelle version » pour réentendre un autre tirage.</p></details>
 <span id="accMsg" class="hint" style="margin:0" aria-live="polite"></span>
 </div>
 <div id="tr" role="dialog" aria-modal="true" aria-labelledby="trT">
@@ -57,17 +68,19 @@
 <div class="trcur"><small class="hint">Accord en cours</small><div id="trCur" class="trname">–</div><div id="trDia" class="trdia"></div></div>
 <div class="trnext" id="trNext"><small class="hint">Ensuite</small><div id="trNxt" class="trname2">–</div><div id="trNDia" class="trdia"></div></div>
 </div>
-<div id="trBeats" class="trbeats" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+<div id="trBeats" class="trbeats" aria-hidden="true"></div>
 <div id="trBar" class="hint"></div>
 <div class="tools" role="group" aria-label="Réglages de l'entraînement">
 <button id="trGo" aria-pressed="false">Démarrer</button>
 <label>Tempo (battements par minute)<span class="trbpm"><button class="sec" id="trM" aria-label="Moins vite">−</button><input type="number" id="trBpm" min="30" max="240" value="80" inputmode="numeric"><button class="sec" id="trP" aria-label="Plus vite">+</button></span></label>
 <label>Rythme<select id="trRy"></select></label>
-<button class="tg" id="trCh" role="switch" aria-checked="false">Faire sonner l'accord</button>
+<div class="mrow"><span id="trMeterLab">Mesure</span><div id="trMeterSeg" class="seg" role="radiogroup" aria-labelledby="trMeterLab"></div></div>
+<span class="tgs" role="group" aria-label="Pistes"><button class="tg" id="trCh" role="switch" aria-checked="false">Faire sonner l'accord</button>
 <button class="tg" id="trBs" role="switch" aria-checked="false">Ligne de basse</button>
+<button class="tg" id="trPn" role="switch" aria-checked="false" title="Joue les accords du piano choisis dans la grille, en rythme">Clavier</button></span>
 </div>
 <div id="trCpm" class="hint" aria-live="polite"></div>
-<p class="hint">Réglez le tempo et le rythme, puis appuyez sur « Démarrer » : la grille tourne en boucle, une mesure de quatre temps par accord. L'accord suivant s'encadre au dernier temps pour vous laisser changer à temps. « Ligne de basse » ajoute une basse qui suit le rythme (en shabada, une basse qui « marche » vers l'accord suivant). Le nombre de changements d'accord par minute se calcule d'après le tempo et la grille.</p>
+<p class="hint">Réglez le tempo et le rythme, puis appuyez sur « Démarrer » : la grille tourne en boucle, les accords suivent la grille, temps par temps. L'accord suivant s'encadre au dernier temps pour vous laisser changer à temps. « Ligne de basse » ajoute une basse qui suit le rythme (en shabada, une basse qui « marche » vers l'accord suivant). Le nombre de changements d'accord par minute se calcule d'après le tempo et la grille.</p>
 </div></div>
 <div id="vmsg" class="hint" aria-live="polite"></div>
 <div id="grid" aria-live="polite"></div>
@@ -93,6 +106,24 @@
 <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="pT">
 <div class="sh"><strong id="pT">Grilles types</strong><button id="pok">Fermer</button></div>
 <div class="cols p2" id="pcols"></div></div></div>
+<div id="dsheet" class="ovl"><div class="back" id="dback"></div>
+<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="dT">
+<div class="sh"><strong id="dT">Accord libre</strong><button class="sec" id="dhear" aria-label="Écouter ce diagramme" title="Écouter ce diagramme">Écouter</button><button class="sec" id="dcancel">Fermer</button></div>
+<p class="hint" id="dsub" style="margin:0 0 8px"></p>
+<div id="dfb"></div>
+<div class="drow"><span class="stp" role="group" aria-label="Case de départ"><button class="sec" id="dsm" aria-label="Case de départ plus basse">−</button><span id="dstart" aria-live="polite">Case 1</span><button class="sec" id="dsp" aria-label="Case de départ plus haute">+</button></span><button class="tg" id="dbar" role="switch" aria-checked="false">Barré</button><button class="sec" id="dclr">Effacer</button></div>
+<p class="hint" id="dwarn" aria-live="polite" style="margin:8px 0 0"></p>
+<div class="acts"><button id="dsave">Enregistrer</button><button class="sec" id="ddel">Supprimer ce diagramme</button></div>
+</div></div>
+<div id="tsheet" class="ovl"><div class="back" id="tback"></div>
+<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="tT">
+<div class="sh"><strong id="tT">Transposer la grille</strong><button class="sec" id="tcancel">Fermer</button></div>
+<div class="drow"><span class="stp" role="group" aria-label="Décalage en demi-tons"><button class="sec" id="tm" aria-label="Un demi-ton plus bas">−</button><span id="tval" aria-live="polite">0</span><button class="sec" id="tp" aria-label="Un demi-ton plus haut">+</button></span><span id="tex" class="hint" style="margin:0"></span></div>
+<div class="seg wide" id="tmode" role="radiogroup" aria-label="Façon de transposer"><button role="radio" data-m="recalc" aria-checked="true">Recalculer les doigtés</button><button role="radio" data-m="capo" aria-checked="false">Garder les formes (capo)</button></div>
+<p class="hint" id="tinfo" style="margin:8px 0 0"></p>
+<p class="warnbox" id="twarn" role="status" hidden></p>
+<div class="acts"><button id="tgo">Transposer</button></div>
+</div></div>
 <div id="sheet"><div class="back" id="back"></div>
 <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetT">
 <div class="sh"><strong id="sheetT"></strong><button class="sec" id="prv" aria-label="Temps précédent" title="Temps précédent">←</button><button class="sec" id="nxt" aria-label="Temps suivant" title="Temps suivant">→</button><button class="sec" id="hear" aria-label="Écouter l'accord" title="Écouter l'accord"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7"/><path d="M19 6a8.5 8.5 0 0 1 0 12"/></svg></button><button class="sec" id="del" title="Le temps reprend l'accord précédent">Retirer le changement</button><button class="sec" id="delBar">Supprimer la mesure</button><button id="ok">OK</button></div>

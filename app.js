@@ -51,8 +51,10 @@ function structureToChord(s){
 // Versions. APP_VERSION : l'appli (semver). SCHEMA_VERSION : format des fichiers d'export et des liens de partage (entier, +1 à chaque
 // changement incompatible ; les ajouts de champs ne le changent pas). Format 3 : la grille est une suite d'ÉVÉNEMENTS d'accords placés
 // à (mesure, temps) ; un accord dure jusqu'à l'événement suivant. Aucune lecture des formats 1 et 2 (jamais publiés).
-const APP_VERSION='2.0.0', SCHEMA_VERSION=3, DB_VERSION='chords-db 0.5.1';
-const BPB=4, MAX_BARS=128;   // temps par mesure (4/4 pour l'instant : le champ « meter » du fichier est réservé), mesures au plus
+const APP_VERSION='2.1.1', SCHEMA_VERSION=3, DB_VERSION='chords-db 0.5.1';
+let BPB=4; const MAX_BARS=128, METERS=[3,4,5,6];   // temps par mesure (3, 4, 5 ou 6 ; réglé par setMeter, écrit dans le champ « meter » des fichiers), mesures au plus
+const meterOf=d=>{ const m=Math.round(parseFloat(d&&d.meter)); return METERS.includes(m)?m:4; };   // « 3 », 3 ou « 3/4 » -> 3 ; absent ou inconnu -> 4
+const setMeter=m=>{ BPB=METERS.includes(m)?m:4; };
 // MIGRATIONS[n] transforme un document de format n en format n+1. Ne jamais modifier une migration déjà publiée : en ajouter une.
 const MIGRATIONS={};
 // Vérifie et met à niveau un document importé. -> {doc,warnings} ou {error}
@@ -67,22 +69,22 @@ function normalizeImport(d){
 }
 // --- Grille : suite de temps. chords[b] = accord qui sonne au temps b (0 = premier temps de la première mesure). ---
 // Les événements (changements d'accord) n'existent que dans les fichiers : on en tire cette liste à plat, et on y retourne.
-const posOf=(bar,beat)=>(bar-1)*BPB+(beat-1);   // mesure et temps comptés à partir de 1
-const barOf=b=>Math.floor(b/BPB)+1, beatOf=b=>b%BPB+1;
-function eventsOf(arr){   // -> [{mesure,temps,accord,structure}] : un événement au début et à chaque changement
-  const out=[]; arr.forEach((c,b)=>{ if(b===0||c!==arr[b-1]) out.push({mesure:barOf(b),temps:beatOf(b),accord:c,structure:chordToStructure(c)}); });
+const posOf=(bar,beat,w=BPB)=>(bar-1)*w+(beat-1);   // mesure et temps comptés à partir de 1
+const barOf=(b,w=BPB)=>Math.floor(b/w)+1, beatOf=(b,w=BPB)=>b%w+1;
+function eventsOf(arr,w=BPB){   // -> [{mesure,temps,accord,structure}] : un événement au début et à chaque changement
+  const out=[]; arr.forEach((c,b)=>{ if(b===0||c!==arr[b-1]) out.push({mesure:barOf(b,w),temps:beatOf(b,w),accord:c,structure:chordToStructure(c)}); });
   return out;
 }
 // Accords du document : la forme structurée (stable) prime ; sinon le symbole tel qu'il a été écrit.
 // -> {chords (un par temps), bad: [positions « mesure M temps T » ignorées]}
 function resolveChords(doc){
-  const bars=Math.min(MAX_BARS,Math.max(1,Math.round(+doc.bars)||1)), n=bars*BPB, bad=[], ev=[];
+  const w=meterOf(doc), bars=Math.min(MAX_BARS,Math.max(1,Math.round(+doc.bars)||1)), n=bars*w, bad=[], ev=[];
   doc.events.forEach(e=>{
     if(!e||typeof e!=='object') return;
     const m=Math.round(+e.mesure), t=Math.round(+e.temps), at=`${m}:${t}`;
-    if(!(m>=1&&m<=bars&&t>=1&&t<=BPB)){ bad.push(at); return; }
+    if(!(m>=1&&m<=bars&&t>=1&&t<=w)){ bad.push(at); return; }
     const c=structureToChord(e.structure);
-    if(c) ev.push([posOf(m,t),c]); else if(typeof e.accord==='string'&&SAFE_SYMBOL.test(e.accord)&&parse(e.accord)) ev.push([posOf(m,t),e.accord]); else bad.push(at);
+    if(c) ev.push([posOf(m,t,w),c]); else if(typeof e.accord==='string'&&SAFE_SYMBOL.test(e.accord)&&parse(e.accord)) ev.push([posOf(m,t,w),e.accord]); else bad.push(at);
   });
   ev.sort((a,b)=>a[0]-b[0]);
   const chords=[]; let cur=null, k=0;
@@ -91,15 +93,16 @@ function resolveChords(doc){
   return {chords:ev.length?chords:[],bad};
 }
 // Texte d'une grille : mesures séparées par « | ». Forme compacte : les accords d'une mesure se partagent les temps (1 -> 4 ; 2 -> 2+2 ; 3 -> 2+1+1 ;
-// 4 -> 1+1+1+1) et « % » = l'accord précédent continue. Si le découpage de la mesure est autre (ex. 3 temps + 1 temps), forme détaillée :
-// quatre cases, un accord au temps où il commence et « . » tant qu'il continue (ex. « Am . . F »).
-const EVEN={1:[0],2:[0,2],3:[0,2,3],4:[0,1,2,3]};
+// 4 -> 1+1+1+1 ; pour 3, 5 ou 6 temps voir evenPos) et « % » = l'accord précédent continue. Si le découpage de la mesure est autre (ex. 3 temps + 1 temps), forme détaillée :
+// une case par temps, un accord au temps où il commence et « . » tant qu'il continue (ex. « Am . . F »).
+// Partage régulier de la mesure entre k accords : les premiers accords prennent le temps en plus (4 temps : 3 accords -> 2+1+1 ; 5 temps : 2 -> 3+2 ; 6 temps : 3 -> 2+2+2).
+function evenPos(k,w=BPB){ k=Math.max(1,Math.min(k,w)); const base=Math.floor(w/k), extra=w-base*k, p=[]; let t=0; for(let i=0;i<k;i++){ p.push(t); t+=base+(i<extra?1:0); } return p; }
 function gridText(arr){
   const bars=[];
   for(let b=0;b<arr.length;b+=BPB){
     const S=[0]; for(let t=1;t<BPB&&b+t<arr.length;t++) if(arr[b+t]!==arr[b+t-1]) S.push(t);
     const startsNew=b===0||arr[b]!==arr[b-1], name=t=>arr[b+t];
-    if(S.join()===EVEN[S.length].join()) bars.push(S.map((t,i)=>i===0&&!startsNew?'%':name(t)).join(' '));
+    if(S.join()===evenPos(S.length).join()) bars.push(S.map((t,i)=>i===0&&!startsNew?'%':name(t)).join(' '));
     else bars.push(Array.from({length:Math.min(BPB,arr.length-b)},(_,t)=>t===0?(startsNew?name(0):'.'):(S.includes(t)?name(t):'.')).join(' '));
   }
   return bars.join(' | ');
@@ -115,7 +118,7 @@ function parseGrid(text){
       return;
     }
     const L=[]; w.forEach(x=>{ const c=word(x); if(c){ L.push(c); } }); if(!L.length&&last) L.push(last); if(!L.length) return;
-    const k=Math.min(L.length,4), pos=EVEN[k]; last=L[k-1];
+    const k=Math.min(L.length,BPB), pos=evenPos(k); last=L[k-1];
     for(let t=0;t<BPB;t++){ let i=0; while(i+1<k&&pos[i+1]<=t) i++; chords.push(L[i]); }
   });
   return {chords,bad};
@@ -127,6 +130,18 @@ function durText(n){
   if(n===BPB) return ''; if(n<BPB) return n+' temps';
   const m=Math.floor(n/BPB), t=n%BPB; return m+(m>1?' mesures':' mesure')+(t?` et ${t} temps`:'');
 }
+// Changement de mesure : chaque mesure garde ses accords ; le début de chaque accord se place proportionnellement dans la nouvelle mesure
+// (4 -> 3 : « A A B B » devient « A A B » ; 5 -> 4 : « A A A B B » devient « A A B B »). -> {chords, remap(ancien temps) = nouveau temps}
+function reMeter(arr,from,to){
+  const out=[], at=t=>t===0?0:Math.min(to-1,Math.round(t*to/from));
+  for(let b=0;b<arr.length;b+=from){
+    const bar=Array(to).fill(null), S=[]; for(let t=0;t<from;t++) if(t===0||arr[b+t]!==arr[b+t-1]) S.push(t);
+    const even=S.join()===evenPos(S.length,from).join(), P=even?evenPos(S.length,to):S.map(at);   // partage régulier -> partage régulier
+    S.forEach((t,i)=>{ bar[P[i]]=arr[b+t]; });
+    let cur=bar[0]; for(let t=0;t<to;t++){ if(bar[t]!==null) cur=bar[t]; out.push(cur); }
+  }
+  return {chords:out,remap:k=>Math.floor(k/from)*to+at(k%from)};   // (position d'un début de série : approximative si le partage n'était pas régulier ; les choix manuels sont alors vérifiés par fixPins)
+}
 // ==/COMPAT==
 // --- Pont vers le moteur d'accompagnement : une grille de temps -> texte du moteur (positions explicites « Dm7[1] G7[3] », temps comptés à partir de 1) ---
 // Le moteur (syntaxe JJazzLab) n'écrit pas tous les suffixes comme le solveur : traduction des variantes qu'il refuse (vérifié sur tous les suffixes de QMAP).
@@ -135,11 +150,13 @@ function engineName(sym){
   const m=String(sym).match(/^([A-G][#b]?)([^\/]*)(\/[A-G][#b]?)?$/); if(!m) return sym;
   return m[1]+(Object.hasOwn(ENGINE_SUF,m[2])?ENGINE_SUF[m[2]]:m[2])+(m[3]||'');
 }
+// Mesure du moteur : 3, 4 ou 5 temps. Une mesure de 6 temps est jouée comme deux mesures de 3 (valse deux fois) : la grille est découpée de 3 en 3.
+const engineMeter=(w=BPB)=>w===6?3:w;
 function engineText(arr){
-  const bars=[];
-  for(let b=0;b<arr.length;b+=BPB){
+  const bars=[], W=engineMeter();
+  for(let b=0;b<arr.length;b+=W){
     const t=[`${engineName(arr[b])}[1]`];
-    for(let j=1;j<BPB&&b+j<arr.length;j++) if(arr[b+j]!==arr[b+j-1]) t.push(`${engineName(arr[b+j])}[${j+1}]`);
+    for(let j=1;j<W&&b+j<arr.length;j++) if(arr[b+j]!==arr[b+j-1]) t.push(`${engineName(arr[b+j])}[${j+1}]`);
     bars.push(t.join(' '));
   }
   return bars.join(' | ');
@@ -200,15 +217,29 @@ const DRUM_VOL=127;   // volume du canal de batterie (la banque rend charleston 
 const DRUM_KIND={35:'kick',36:'kick',37:'snare',38:'snare',40:'snare',42:'hat',44:'hatp',46:'hat',51:'ride',53:'ride',59:'ride'};   // notes de batterie du moteur -> sons intégrés
 const DRUMS={kick:[36,40,84],snare:[38,40,84],hat:[42,85,127],hatp:[44,95,127],ride:[51,90,127],clickHi:[76,100,127],clickLo:[77,90,120]};
 // Un rythme = une mesure de 4 temps : coups [position en temps (0 inclus à 4 exclu), instrument, force]. Les positions fractionnaires donnent le ternaire (1/3, 2/3).
+// Rythmes d'entraînement. Chaque rythme sait se décliner pour une mesure de n temps : les temps forts suivent le regroupement usuel (3 ; 2+2 ; 3+2 ; 3+3).
+const GROUPS={3:[3],4:[2,2],5:[3,2],6:[3,3]};
+const groupsOf=n=>GROUPS[n]||[n];
 const RHYTHMS=(()=>{
-  const mk=(id,name,fn)=>{ const h=[]; fn((p,d,v)=>h.push([p,d,v])); h.sort((a,b)=>a[0]-b[0]); return {id,name,hits:h}; };
+  const mk=(id,name,fn)=>{ const build=n=>{ const h=[]; fn((p,d,v)=>h.push([p,d,v]),n); h.sort((x,y)=>x[0]-y[0]); return h; }, cache={};
+    return {id,name,hits:build(4),hitsFor:n=>cache[n]||(cache[n]=build(n))}; };
+  // pour chaque temps : début de groupe (« 0 »), fin de groupe (« 1 »), milieu (« 2 »)
+  const role=(b,n)=>{ let s=0; for(const g of groupsOf(n)){ if(b===s) return 0; if(b===s+g-1) return 1; s+=g; } return 2; };
   return [
-    mk('click','Métronome (clic seul)',a=>{ for(let b=0;b<4;b++) a(b,b?'clickLo':'clickHi',b?0.8:1); }),
-    mk('bin','Binaire : poum, ti, tati',a=>{ for(let b=0;b<4;b++){ a(b,'hat',0.75); a(b+0.5,'hat',0.5); a(b,b%2?'snare':'kick',b%2?0.9:0.95); } }),
-    mk('ter','Ternaire : trois coups de charleston par temps',a=>{ for(let b=0;b<4;b++){ a(b,'hat',0.8); a(b+1/3,'hat',0.45); a(b+2/3,'hat',0.6); a(b,b%2?'snare':'kick',b%2?0.9:0.95); } }),
-    mk('swing','Shabada : swing de jazz (cymbale ride)',a=>{ for(let b=0;b<4;b++){ a(b,'ride',0.8); if(b%2){ a(b,'hatp',0.8); a(b+2/3,'ride',0.55); } else a(b,'kick',0.4); } })
+    mk('click','Métronome (clic seul)',(a,n)=>{ for(let b=0;b<n;b++) a(b,b?'clickLo':'clickHi',b?0.8:1); }),
+    mk('bin','Binaire : poum, ti, tati',(a,n)=>{ for(let b=0;b<n;b++){ a(b,'hat',0.75); a(b+0.5,'hat',0.5); const r=role(b,n); if(r===0) a(b,'kick',0.95); else if(r===1) a(b,'snare',0.9); } }),
+    mk('ter','Ternaire : trois coups de charleston par temps',(a,n)=>{ for(let b=0;b<n;b++){ a(b,'hat',0.8); a(b+1/3,'hat',0.45); a(b+2/3,'hat',0.6); const r=role(b,n); if(r===0) a(b,'kick',0.95); else if(r===1) a(b,'snare',0.9); } }),
+    mk('swing','Shabada : swing de jazz (cymbale ride)',(a,n)=>{ for(let b=0;b<n;b++){ a(b,'ride',0.8); if(b%2){ a(b,'hatp',0.8); a(b+2/3,'ride',0.55); } else a(b,'kick',0.4); } })
   ];
 })();
+// Temps (en battements depuis le début de la mesure) où le clavier frappe l'accord, selon le rythme : un coup par groupe de temps, la « charleston » du jazz,
+// ou un seul accord tenu avec le métronome.
+function compHits(id,n){
+  const g=groupsOf(n), starts=g.map((_,i)=>g.slice(0,i).reduce((a,b)=>a+b,0));
+  if(id==='click') return [0];
+  if(id==='swing') return n<=4?[0,1+2/3]:[0,1+2/3,starts[1]];
+  return starts;
+}
 // Changements d'accord par minute quand la grille tourne en boucle (le retour de la dernière mesure à la première compte) ; une mesure = 4 temps.
 // chords : un accord par temps ; la grille tourne en boucle. Changements d'accord par minute au tempo bpm (battements par minute).
 function changesPerMin(chords,bpm){ const n=chords.length; if(n<2) return 0; let c=0; for(let i=0;i<n;i++) if(chords[i]!==chords[(i+n-1)%n]) c++; return c*bpm/n; }
@@ -237,7 +268,7 @@ const BASS_LO=28;   // mi1 : la basse électrique la plus grave
 const bassMidi=pc=>BASS_LO+(((pc-4)%12)+12)%12;   // classe de hauteur -> note de basse, de mi1 (28) à ré#2 (39)
 // Une mesure de basse : [position en temps, note MIDI, durée en temps, force 0..1]. a et b = accord de la mesure et le suivant ({root,q,bass} de parse()), b peut être null.
 // Binaire : fondamentale / quinte avec une anticipation ; ternaire : fondamentale – quinte aux noires ; shabada : « walking bass » (fondamentale, tierce, quinte, note d'approche chromatique vers l'accord suivant).
-function bassLine(id,a,b){
+function bassLine(id,a,b,n=4){   // n : temps par mesure
   if(!a||a.q===null||a.q===undefined) return [];
   const Rn=bassMidi(a.root), B1=a.bass!=null?bassMidi(a.bass):Rn, q=a.q||'';
   const third=(q==='m'||q==='m7')?3:q==='sus2'?2:q==='sus4'?5:(q==='5'||q==='5(2)')?7:4;
@@ -245,11 +276,11 @@ function bassLine(id,a,b){
     const tgt=b&&b.q!==null&&b.q!==undefined?(b.bass!=null?b.bass:b.root):null, here=a.bass!=null?a.bass:a.root;
     let ap=Rn+((q==='7'||q==='m7')?10:9);   // même accord ensuite : la sixte ou la septième
     if(tgt!==null&&tgt!==here){ const T=bassMidi(tgt); ap=(T-1>=BASS_LO&&(T-1)%12!==Rn%12)?T-1:T+1; }   // un demi-ton sous la prochaine fondamentale ; au-dessus si le dessous est la fondamentale actuelle
-    return [[0,B1,0.9,0.9],[1,Rn+third,0.9,0.75],[2,Rn+7,0.9,0.8],[3,ap,0.9,0.75]];
+    const o=[[0,B1,0.9,0.9]]; for(let i=1;i<n-1;i++) o.push([i,i%2?Rn+third:Rn+7,0.9,i%2?0.75:0.8]); o.push([n-1,ap,0.9,0.75]); return o;
   }
-  if(id==='bin') return [[0,B1,1.4,0.9],[1.5,Rn,0.45,0.7],[2,Rn+7,1.4,0.8],[3.5,Rn,0.45,0.7]];
-  if(id==='ter') return [[0,B1,0.9,0.9],[1,Rn+7,0.9,0.75],[2,Rn,0.9,0.85],[3,Rn+7,0.9,0.75]];
-  return [[0,B1,1.8,0.9],[2,Rn+7,1.8,0.75]];   // métronome : une basse tenue, discrète
+  if(id==='bin'){ const o=[]; for(let i=0;i<n;i+=2){ o.push([i,i%4===0?B1:Rn+7,i+1<n?1.4:0.9,i%4===0?0.9:0.8]); if(i+1.5<n) o.push([i+1.5,Rn,0.45,0.7]); } return o; }
+  if(id==='ter'){ const o=[]; for(let i=0;i<n;i++) o.push([i,i===0?B1:i%2?Rn+7:Rn,0.9,i===0?0.9:0.75]); return o; }
+  const h=Math.floor(n/2); return [[0,B1,Math.min(1.8,h),0.9],[h,Rn+7,Math.min(1.8,n-h),0.75]];   // métronome : une basse tenue, discrète
 }
 // Basse synthétisée (sons intégrés) : harmoniques exactes, attaque courte, extinction régulière.
 function renderBass(sr,midi){
@@ -285,6 +316,9 @@ const BARRE=[
 ];
 
 /* ===== 30-solver.js ===== */
+// Accords libres : forme (ex. « Am », « C/G ») -> liste de diagrammes {f:[6 cases, -1 = muette], g:[6 doigts], b:null|[case,corde de départ,corde d'arrivée]}
+let customs={};
+const customsFor=k=>Array.isArray(customs[k])?customs[k]:[];
 const toF=s=>[...s].map(c=>c=='x'?-1:+c);
 function candidates(root,q,bass){
   const out=[], seen=new Set(), name=N[root]+q, key=bass==null?name:name+'/'+BN[bass];
@@ -308,6 +342,7 @@ function candidates(root,q,bass){
   return out;
 }
 function nodeCost(c){
+  if(c.libre) return -50;   // un diagramme dessiné par l'utilisateur pour cette forme est toujours préféré (sauf si un autre est choisi à la main)
   const fr=c.f.filter(x=>x>0), mn=fr.length?Math.min(...fr):0, mx=fr.length?Math.max(...fr):0;
   const mutedInner=c.f.some((x,i)=>x<0&&i>0&&i<5&&c.f.slice(0,i).some(y=>y>=0)&&c.f.slice(i+1).some(y=>y>=0))?2:0;
   return c.base+0.4*(mx-mn)+1.2*Math.max(0,mn-3)+0.15*fr.length+mutedInner;
@@ -339,15 +374,16 @@ function build(tokens,capo,level,ov){
     if(level=='easy'){ if(q=='m7')q='m'; else if(q=='maj7')q=''; }
     const root=((p.root-capo)%12+12)%12;
     const bs=(p.bass!==null&&p.bass!==p.root)?((p.bass-capo)%12+12)%12:null;
+    const lkey=N[root]+q+(bs!==null?'/'+N[bs]:''), cu=customsFor(lkey);   // accords libres de cette forme (indépendants du capo : la forme est celle qu'on joue)
     let full=candidates(root,q,bs);
     if(!full.length&&bs!==null){full=candidates(root,q); if(full.length) note='sans la basse';}
     if(!full.length&&q!==''&&q!=='m'){ // repli sur l'accord de base
       const base=q.startsWith('m')&&q!='maj7'?'m':''; full=candidates(root,base);
       if(full.length) note='simplifié en '+N[root]+base;
     }
-    if(!full.length) return {t,full:[],note:'pas de diagramme'};
-    full.sort((a,b)=>nodeCost(a)-nodeCost(b)); full=full.slice(0,6); full.forEach((c,j)=>c.id=j);
-    return {t,full,note,pool:ov[i]!=null?[full[ov[i]%full.length]]:full,shape:N[root]+q};
+    if(!full.length&&!cu.length) return {t,full:[],note:'pas de diagramme',libreKey:lkey};
+    full.sort((a,b)=>nodeCost(a)-nodeCost(b)); full=full.slice(0,6); cu.forEach(x=>full.push({...x,libre:true,base:0,shape:lkey})); full.forEach((c,j)=>c.id=j);   // les libres viennent après : les numéros de variante des autres ne bougent pas
+    return {t,full,note:cu.length&&note==='pas de diagramme'?'':note,pool:ov[i]!=null?[full[ov[i]%full.length]]:full,shape:N[root]+q,libreKey:lkey};
   });
 }
 function solve(items,NC,TR){
@@ -391,6 +427,14 @@ function tokens(){return chords.slice();}
 // Regroupe les temps identiques consécutifs : un seul diagramme par série ; r.i = temps de départ, r.n = durée en temps
 
 /* ===== 40-grid-ui.js ===== */
+// Mesure : 3, 4, 5 ou 6 temps. Changer de mesure garde les accords de chaque mesure en les répartissant sur le nouveau nombre de temps.
+const meterBoxes=[$('meterSeg'),$('trMeterSeg')];
+meterBoxes.forEach(box=>{ box.innerHTML=METERS.map(m=>`<button role="radio" data-m="${m}" aria-checked="false" aria-label="${m} temps par mesure">${m}</button>`).join('');
+  box.onclick=e=>{ const b=e.target.closest('button'); if(!b||locked) return; const m=+b.dataset.m; if(m===BPB) return;
+    if(training) trStop();   // le rythme change avec la mesure : on arrête, on repart quand on veut
+    const r=reMeter(chords,BPB,m); editChords(()=>{ chords=r.chords; setMeter(m); },r.remap); meterSync(); accStyleFill(); render(); if(trEl.classList.contains('open')){ trBuildDots(); trShown=''; trShow(-1); trCpm(); } }; });
+function meterSync(){ meterBoxes.forEach(box=>[...box.children].forEach(b=>b.setAttribute('aria-checked',String(+b.dataset.m===BPB)))); }
+meterSync();
 function model(ovr){
   const runs=[];
   tokens().forEach((t,i)=>{const l=runs[runs.length-1]; if(l&&l.t==t) l.n++; else runs.push({t,i,n:1});});
@@ -405,9 +449,9 @@ function renderG(){
   const prevOf=i=>pivots&&i>0?chosen[i-1]||null:null;
   $('grid').innerHTML=items.map((it,i)=>{
     const c=chosen[i], rep=durText(runs[i].n), pt=prevOf(i)?pivotText(c,prevOf(i)):'';
-    if(!c) return `<div class="card" style="cursor:default"><b>${esc(it.t)}</b><small>${[rep,it.note].filter(Boolean).join(' · ')}</small></div>`;
+    if(!c) return `<div class="cw"><div class="card" style="cursor:default"><b>${esc(it.t)}</b><small>${[rep,it.note].filter(Boolean).join(' · ')}</small></div>${it.libreKey?`<div class="cb">${penBtn(i,it.t)}</div>`:''}</div>`;
     const shape=capo?`forme ${it.shape}`:'', vr=it.note?'':(it.full.length>1?`variante ${it.pool.length==1?(rov[i]%it.full.length)+1:c.id+1}/${it.full.length}`:'');
-    return `<div class="cw"><div class="card${lk[runs[i].i]?' lkd':''}" tabindex="0" role="button" data-i="${i}" aria-label="${esc(it.t)} : changer de variante${lk[runs[i].i]?' (verrouillé)':''}"><b>${esc(it.t)}</b>${svg(c,prevOf(i))}<small>${[rep,shape,it.note,pt].filter(Boolean).join(' · ')}</small>${vr?`<small class="np">${vr}</small>`:''}</div>${cardBar(i,it.t,!!lk[runs[i].i])}</div>`;
+    return `<div class="cw"><div class="card${lk[runs[i].i]?' lkd':''}" tabindex="0" role="button" data-i="${i}" aria-label="${esc(it.t)} : changer de variante${lk[runs[i].i]?' (verrouillé)':''}"><b>${esc(it.t)}</b>${svg(c,prevOf(i))}<small>${[rep,shape,it.note,pt].filter(Boolean).join(' · ')}</small>${vr?`<small class="np">${vr}</small>`:''}</div>${cardBar(i,it.t,!!lk[runs[i].i],!!it.libreKey)}</div>`;
   }).join('');
   // suggestion de capo (calculée sur la suite d'accords sans répétitions consécutives)
   const sg=$('sugg'); sg.style.display='none';
@@ -424,6 +468,7 @@ function renderG(){
   }
 }
 $('grid').addEventListener('click',e=>{
+  const pen=e.target.closest('.pen'); if(pen){ openDraw(+pen.dataset.i); return; }
   const ear=e.target.closest('.ear'); if(ear){ hearRun(+ear.dataset.i); return; }   // l'écoute reste possible interface verrouillée
   const el=e.target.closest('.card[data-i]'); if(!el) return;
   if(locked){ vmsg('Interface verrouillée : maintenez le cadenas appuyé pour la déverrouiller.'); return; }
@@ -530,7 +575,7 @@ const PRE=[
 let pk=0;
 const mk=(k,[o,q])=>N[(k+o)%12]+q;
 // un élément de grille type = une mesure : [décalage, type] ou une liste de tels couples (plusieurs accords dans la mesure)
-const barBeats=(k,x)=>Array.isArray(x[0])?x.flatMap((y,i,a)=>Array(Math.round(BPB/a.length)).fill(mk(k,y))):Array(BPB).fill(mk(k,x));
+const barBeats=(k,x)=>{ if(!Array.isArray(x[0])) return Array(BPB).fill(mk(k,x)); const a=x.slice(0,BPB), p=evenPos(a.length); return Array.from({length:BPB},(_,t)=>mk(k,a[p.filter(q=>q<=t).length-1])); };   // plusieurs accords : partage régulier de la mesure
 const presetChords=(k,g)=>g.flatMap(x=>barBeats(k,x));
 function drawP(){
   const o=(on,k,v,t)=>`<button class="opt${on?' on':''}" data-k="${k}" data-v="${v}">${t}</button>`;
@@ -601,13 +646,209 @@ function renderP(){
 }
 // ==/PIANO==
 
+/* ===== 46-transpose.js ===== */
+// ==TRANSPOSE==
+// Transposition de la grille. Deux façons :
+//  - « Recalculer les doigtés » : les accords changent, le capo reste ; les diagrammes de guitare choisis à la main, verrouillés ou dessinés ne peuvent
+//    pas suivre (l'accord n'est plus le même) : on le dit AVANT, avec le nombre exact. Au piano, un choix garde son renversement.
+//  - « Garder les formes (capo) » : les doigtés de guitare ne changent pas du tout (verrous et accords libres compris), c'est le capo qui monte ou descend.
+function transposeSym(sym,s){
+  const p=parse(sym); if(!p) return sym;
+  const m=String(sym).match(/^[A-G][#b]?([^\/]*)/); const rest=m?m[1]:'';
+  return N[((p.root+s)%12+12)%12]+rest+(p.bass!==null&&p.bass!==p.root?'/'+N[((p.bass+s)%12+12)%12]:'');
+}
+// Ce que donnerait la transposition de s demi-tons (sans rien changer) : {ok,reason,chords,capo,counts}
+function transposePlan(s,mode){
+  const capo=+capoSel.value, out={ok:true,reason:'',chords:chords.map(c=>transposeSym(c,s)),capo,counts:{}};
+  const gm=model(ov), c=out.counts;
+  c.locked=Object.keys(lk).length; c.manual=Object.keys(ov).filter(i=>lk[i]==null).length;
+  c.libres=gm.runs.filter((_,k)=>gm.chosen[k]&&gm.chosen[k].libre).length;
+  c.pianoLocked=Object.keys(lkP).length; c.pianoManual=Object.keys(ovP).filter(i=>lkP[i]==null).length;
+  if(!s){ out.ok=false; out.reason='Choisissez un décalage.'; return out; }
+  if(mode==='capo'){
+    out.capo=capo+s;
+    if(out.capo<0||out.capo>7){ out.ok=false; out.reason=out.capo<0?'Le capo ne peut pas descendre sous « sans capo » : transposez plus haut, ou recalculez les doigtés.':'Le capo ne peut pas monter au-delà de la case 7 : transposez moins haut, ou recalculez les doigtés.'; }
+  }
+  return out;
+}
+// Applique la transposition. -> le plan (avec ok=false et reason si impossible)
+function transposeApply(s,mode){
+  const plan=transposePlan(s,mode); if(!plan.ok) return plan;
+  const pm=modelP(ovP), inv={};   // piano : on retient le renversement de chaque choix
+  pm.runs.forEach((r,k)=>{ if(ovP[r.i]==null) return; const f=pm.items[k].full; if(f.length) inv[r.i]={inv:f[ovP[r.i]%f.length].inv,locked:lkP[r.i]!=null}; });
+  chords=plan.chords;   // même nombre de temps : les débuts de séries ne bougent pas
+  if(mode==='capo'){ capoSel.value=String(plan.capo); }   // mêmes formes : choix manuels et verrous de guitare conservés tels quels
+  else { ov={}; lk={}; }
+  ovP={}; lkP={};
+  const pm2=modelP({});
+  pm2.runs.forEach((r,k)=>{ const v=inv[r.i]; if(!v) return; const f=pm2.items[k].full, j=f.findIndex(c=>c.inv===v.inv); if(j>=0){ ovP[r.i]=j; if(v.locked) lkP[r.i]=keyP(f[j]); } });
+  return plan;
+}
+const SIGN=n=>(n>0?'+':n<0?'−':'')+Math.abs(n);
+let tS=2, tMode='recalc';
+const plural=(n,a,b)=>n+' '+(n>1?b:a);
+function transposeWarn(plan,mode){
+  const c=plan.counts, bits=[];
+  if(mode==='recalc'){
+    const g=c.locked+c.manual+c.libres;
+    if(c.locked) bits.push(plural(c.locked,'diagramme de guitare verrouillé','diagrammes de guitare verrouillés'));
+    if(c.manual) bits.push(plural(c.manual,'choix de doigté manuel','choix de doigtés manuels'));
+    if(c.libres) bits.push(plural(c.libres,'accord libre utilisé','accords libres utilisés'));
+    if(g) return {warn:`Ça ne pourra pas rester le même : ${bits.join(', ')} sera${g>1?'ont':''} remplacé${g>1?'s':''} par un doigté calculé pour le nouvel accord (un accord transposé a une autre forme). Les accords libres restent dans votre collection. Pour garder exactement les mêmes formes, choisissez « Garder les formes (capo) ».`};
+  }
+  if(c.pianoLocked+c.pianoManual) return {warn:`Au piano, ${plural(c.pianoLocked+c.pianoManual,'choix est gardé','choix sont gardés')} avec le même renversement, mais les notes changent (y compris pour un diagramme verrouillé).`};
+  return {warn:''};
+}
+function transposeDraw(){
+  const plan=transposePlan(tS,tMode), w=transposeWarn(plan,tMode);
+  $('tval').textContent=tS?`${SIGN(tS)} demi-ton${Math.abs(tS)>1?'s':''}`:'0';
+  const f=chords[0]; $('tex').textContent=tS?`${f} → ${transposeSym(f,tS)}`:'';
+  [...$('tmode').children].forEach(b=>b.setAttribute('aria-checked',String(b.dataset.m===tMode)));
+  $('tinfo').textContent=tMode==='capo'?(plan.ok?`Les doigtés restent identiques ; le capo passe en case ${plan.capo}${+capoSel.value?` (au lieu de ${capoSel.value})`:''}.`:plan.reason):'Les doigtés sont recalculés pour les nouveaux accords ; le capo ne change pas.';
+  const tw=$('twarn'); tw.hidden=!w.warn; tw.textContent=w.warn;
+  $('tgo').disabled=!plan.ok||locked; $('tm').disabled=tS<=-11; $('tp').disabled=tS>=11;
+}
+const closeT=()=>$('tsheet').classList.remove('open');
+$('transB').onclick=()=>{ if(locked){ vmsg('Interface verrouillée.'); return; } const m=pref('tMode'); if(m==='capo'||m==='recalc') tMode=m; tS=tS||2; transposeDraw(); $('tsheet').classList.add('open'); $('tgo').focus(); };
+$('tm').onclick=()=>{ tS=Math.max(-11,tS-1); if(!tS) tS=-1; transposeDraw(); }; $('tp').onclick=()=>{ tS=Math.min(11,tS+1); if(!tS) tS=1; transposeDraw(); };
+$('tmode').onclick=e=>{ const b=e.target.closest('button'); if(!b) return; tMode=b.dataset.m; pref('tMode',tMode); transposeDraw(); };
+$('tcancel').onclick=closeT; $('tback').onclick=closeT;
+$('tgo').onclick=()=>{
+  if(locked) return; const plan=transposeApply(tS,tMode); if(!plan.ok){ transposeDraw(); return; }
+  const c=plan.counts, lost=tMode==='recalc'?c.locked+c.manual+c.libres:0;
+  closeT(); render();
+  const lostMsg=lost?` ⚠ ${lost>1?lost+" diagrammes figés, choisis ou dessinés n'ont pas pu rester les mêmes":"1 diagramme figé, choisi ou dessiné n'a pas pu rester le même"} : recalculé${lost>1?'s':''}.`:'';
+  $('msg').textContent=`Grille transposée de ${SIGN(tS)} demi-ton${Math.abs(tS)>1?'s':''}`+(tMode==='capo'?` : capo en case ${plan.capo}, mêmes formes.`:'.')+lostMsg;
+};
+// ==/TRANSPOSE==
+
+/* ===== 47-libre.js ===== */
+// ==LIBRE==
+// Accord libre (guitare) : l'utilisateur dessine lui-même un diagramme pour une FORME (ex. « Am », « C/G » : la forme jouée, avec le capo déjà retiré).
+// Les diagrammes dessinés sont gardés sur l'appareil (« collection »), suivent la forme quel que soit le capo, et sont préférés aux diagrammes calculés.
+const CUSTOM_KEY='customs', MAX_CUSTOM=6, SHAPE_RE=/^[A-G][#b]?[A-Za-z0-9()]{0,6}(\/[A-G][#b]?)?$/;
+const FRET_MAX=15;
+function customOK(x){
+  return x&&Array.isArray(x.f)&&x.f.length===6&&x.f.every(v=>Number.isInteger(v)&&v>=-1&&v<=FRET_MAX)&&x.f.some(v=>v>=0)
+    &&Array.isArray(x.g)&&x.g.length===6&&x.g.every(v=>Number.isInteger(v)&&v>=0&&v<=4)
+    &&(x.b===null||(Array.isArray(x.b)&&x.b.length===3&&x.b.every(Number.isInteger)&&x.b[0]>=1&&x.b[0]<=FRET_MAX&&x.b[1]>=1&&x.b[1]<=6&&x.b[2]>=1&&x.b[2]<=x.b[1]));
+}
+const cleanCustom=x=>({f:x.f.slice(),g:x.g.slice(),b:x.b?x.b.slice():null});
+function customsSave(){ try{ pref(CUSTOM_KEY,JSON.stringify(customs)); }catch(_){} }
+function customsLoad(){ let o=null; try{ o=JSON.parse(pref(CUSTOM_KEY)||'null'); }catch(_){} customs={}; if(o&&typeof o==='object') libresMerge(Object.entries(o).flatMap(([k,l])=>(Array.isArray(l)?l:[]).map(x=>[k,x]))); }
+// fusionne des [forme, diagramme] valides dans la collection (sans doublon, au plus MAX_CUSTOM par forme) ; -> nombre ajouté
+function libresMerge(list){
+  let added=0;
+  list.forEach(([k,x])=>{ if(typeof k!=='string'||!SHAPE_RE.test(k)||!customOK(x)) return; const l=customs[k]||(customs[k]=[]);
+    if(l.length>=MAX_CUSTOM||l.some(y=>y.f.join()===x.f.join())) return; l.push(cleanCustom(x)); added++; });
+  Object.keys(customs).forEach(k=>{ if(!customs[k].length) delete customs[k]; });
+  return added;
+}
+// Dans les fichiers : seuls les accords libres des formes de la grille actuelle
+function libresOut(){
+  const keys=new Set(model(ov).items.map(it=>it.libreKey).filter(Boolean));
+  return [...keys].flatMap(k=>customsFor(k).map(x=>({forme:k,frettes:x.f,doigts:x.g.join(''),barre:x.b})));
+}
+function libresIn(arr){
+  if(!Array.isArray(arr)) return 0;
+  const n=libresMerge(arr.map(e=>[e&&e.forme,e&&Array.isArray(e.frettes)&&typeof e.doigts==='string'&&/^[0-4]{6}$/.test(e.doigts)?{f:e.frettes,g:[...e.doigts].map(Number),b:e.barre??null}:null]));
+  if(n) customsSave(); return n;
+}
+// Doigts et barré d'un dessin. fg : doigts imposés par l'utilisateur (0 = automatique). -> {g,b,warn}
+function fingerData(f,barreOn,fg){
+  const g=[0,0,0,0,0,0], dots=f.map((x,i)=>x>0?i:-1).filter(i=>i>=0); let b=null, warn='';
+  if(barreOn){
+    if(dots.length>=2){ const bf=Math.min(...dots.map(i=>f[i])), S=dots.filter(i=>f[i]===bf), iL=Math.min(...S), iR=Math.max(...S);
+      if(S.length>=2&&f.slice(iL,iR+1).every(x=>x>=bf)) b=[bf,6-iL,6-iR]; }
+    if(!b) warn='Le barré demande deux cordes au moins à la case la plus basse, sans corde à vide ou muette entre elles.';
+  }
+  const inBar=i=>b&&f[i]===b[0]&&i>=6-b[1]&&i<=6-b[2], used=new Set();
+  dots.forEach(i=>{ if(inBar(i)){ g[i]=1; used.add(1); } else if(fg[i]>0){ g[i]=fg[i]; used.add(fg[i]); } });
+  let n=1; dots.filter(i=>!inBar(i)&&!(fg[i]>0)).sort((a,c)=>f[a]-f[c]||a-c).forEach(i=>{ while(used.has(n)&&n<=4) n++; if(n>4){ g[i]=4; warn=warn||'Plus de quatre doigts sont nécessaires.'; } else { g[i]=n; used.add(n); } });
+  return {g,b,warn};
+}
+// Remarques (non bloquantes) : le dessin contient-il les notes de l'accord ?
+function drawCheck(key,f){
+  const p=parse(key); if(!p||p.q===null||!IV[p.q]) return '';
+  const ok=new Set(IV[p.q].map(i=>(p.root+i)%12)), pcs=f.map((x,i)=>x>=0?(OPEN_MIDI[i]+x)%12:null).filter(v=>v!==null), out=[...new Set(pcs.filter(v=>!ok.has(v)))];
+  const bits=[]; if(!pcs.length) return 'Aucune corde ne sonne.';
+  if(!pcs.includes(p.root)) bits.push('la fondamentale ('+N[p.root]+') est absente');
+  if(out.length) bits.push('notes qui ne font pas partie de l\'accord : '+out.map(v=>N[v]).join(', '));
+  const low=f.findIndex(x=>x>=0); if(p.bass!==null&&low>=0&&(OPEN_MIDI[low]+f[low])%12!==p.bass) bits.push('la note la plus grave n\'est pas la basse demandée ('+N[p.bass]+')');
+  return bits.length?'Attention : '+bits.join(' ; ')+'.':'';
+}
+let ed=null;   // {key,run,idx,f,fg,barre,start}
+const STR_NAMES=['Mi','La','Ré','Sol','Si','Mi'];
+function drawFret(){
+  const {g,b,warn}=fingerData(ed.f,ed.barre,ed.fg);
+  let h='<div class="fb" role="group" aria-label="Manche de la guitare : touchez une case pour poser un doigt">';
+  h+='<span class="fl"></span>'+ed.f.map((x,i)=>`<button class="fh" data-s="${i}" aria-label="Corde ${6-i} (${STR_NAMES[i]}) : ${x<0?'muette':x===0?'à vide':'case '+x}. Toucher pour changer">${x<0?'×':x===0?'○':'·'}</button>`).join('');
+  for(let r=0;r<5;r++){ const fr=ed.start+r;
+    h+=`<span class="fl">${fr}</span>`+ed.f.map((x,i)=>`<button class="fc${r===0&&ed.start===1?' nut':''}" data-s="${i}" data-r="${fr}" aria-label="Corde ${6-i}, case ${fr}${x===fr?' : doigt posé'+(g[i]?' (doigt '+g[i]+')':''):''}">${x===fr?`<span class="dot">${g[i]||''}</span>`:''}</button>`).join('');
+  }
+  if(b){ const r=b[0]-ed.start; if(r>=0&&r<5) h+=`<span class="barre" style="grid-column:${6-b[1]+2}/${6-b[2]+3};grid-row:${r+2}"></span>`; }
+  h+='<span class="fl"></span>'+STR_NAMES.map(n=>`<span class="sn">${n}</span>`).join('')+'</div>';
+  $('dfb').innerHTML=h;
+  $('dstart').textContent='Case '+ed.start; $('dsm').disabled=ed.start<=1; $('dsp').disabled=ed.start>=FRET_MAX-4;
+  tgSet($('dbar'),ed.barre);
+  const hid=ed.f.some(x=>x>0&&(x<ed.start||x>ed.start+4));
+  $('dwarn').textContent=[warn,hid?'Une note est hors de la zone affichée : changez la case de départ.':'',drawCheck(ed.key,ed.f)].filter(Boolean).join(' ');
+  $('dsave').disabled=locked||!ed.f.some(x=>x>=0);
+}
+function openDraw(k){
+  if(locked||tab!=='g') return;
+  const m=model(ov), it=m.items[k]; if(!it||!it.libreKey) return;
+  const c=m.chosen[k], list=customsFor(it.libreKey);
+  ed={key:it.libreKey,run:m.runs[k].i,idx:-1,f:[-1,-1,-1,-1,-1,-1],fg:[0,0,0,0,0,0],barre:false,start:1};
+  if(c){ ed.f=c.f.slice(); ed.barre=!!c.b; if(c.libre) ed.idx=list.findIndex(x=>x.f.join()===c.f.join());
+    const g0=fingerData(ed.f,ed.barre,[0,0,0,0,0,0]).g; if(g0.join()!==c.g.join()) ed.fg=c.g.map((v,i)=>c.b&&c.f[i]===c.b[0]?0:v); }
+  const fr=ed.f.filter(x=>x>0); ed.start=fr.length&&Math.max(...fr)>5?Math.min(Math.min(...fr),FRET_MAX-4):1;
+  const capo=+capoSel.value;
+  $('dT').textContent=ed.idx>=0?'Modifier mon accord libre':'Accord libre';
+  $('dsub').textContent=`Forme ${ed.key}${capo?` — avec le capo en case ${capo}, elle sonne ${transposeSym(ed.key,capo)}`:''}. Touchez une corde (en haut) pour la rendre muette ou à vide, une case pour poser un doigt, un doigt déjà posé pour changer son numéro.`;
+  $('ddel').style.display=ed.idx>=0?'':'none';
+  drawFret(); $('dsheet').classList.add('open'); $('dsave').focus();
+}
+const closeD=()=>{ $('dsheet').classList.remove('open'); ed=null; };
+$('dfb').onclick=e=>{
+  const b=e.target.closest('button'); if(!b||!ed) return; const s=+b.dataset.s;
+  if(b.classList.contains('fh')) ed.f[s]=ed.f[s]===-1?0:-1;
+  else { const r=+b.dataset.r; if(ed.f[s]===r) ed.fg[s]=(ed.fg[s]+1)%5; else { ed.f[s]=r; ed.fg[s]=0; } }
+  if(!ed.f.some(x=>x>0)) ed.barre=false;
+  drawFret();
+};
+$('dsm').onclick=()=>{ ed.start=Math.max(1,ed.start-1); drawFret(); }; $('dsp').onclick=()=>{ ed.start=Math.min(FRET_MAX-4,ed.start+1); drawFret(); };
+$('dbar').onclick=()=>{ ed.barre=!ed.barre; drawFret(); };
+$('dclr').onclick=()=>{ ed.f=[-1,-1,-1,-1,-1,-1]; ed.fg=[0,0,0,0,0,0]; ed.barre=false; drawFret(); };
+$('dhear').onclick=()=>{ const n=guitarNotes(ed.f,+capoSel.value); if(!n.length) return; if(!Snd.hear('guitar',n)) $('dwarn').textContent=NOSOUND; };
+$('dcancel').onclick=closeD; $('dback').onclick=closeD;
+$('dsave').onclick=()=>{
+  if(!ed||locked) return; const {g,b}=fingerData(ed.f,ed.barre,ed.fg), entry={f:ed.f.slice(),g,b};
+  if(!customOK(entry)){ $('dwarn').textContent='Ce diagramme n\'est pas valide.'; return; }
+  const list=customs[ed.key]||(customs[ed.key]=[]), key=entry.f.join(), dup=list.findIndex(x=>x.f.join()===key);
+  if(ed.idx>=0) list[ed.idx]=entry; else if(dup>=0) list[dup]=entry; else if(list.length>=MAX_CUSTOM){ $('dwarn').textContent=`${MAX_CUSTOM} diagrammes dessinés au plus par forme : supprimez-en un d'abord.`; return; } else list.push(entry);
+  customsSave();
+  const run=ed.run; closeD();
+  const m=model(ov), k=m.runs.findIndex(r=>r.i===run), c=k<0?null:m.items[k].full.find(c=>c.libre&&c.f.join()===key);
+  if(c){ ov[run]=c.id; if(lk[run]!=null) lk[run]=keyG(c); }   // le diagramme dessiné devient le choix de cette série
+  render(); vmsg('Accord libre enregistré : il sera proposé chaque fois que cette forme revient.');
+};
+$('ddel').onclick=()=>{
+  if(!ed||ed.idx<0) return; const list=customs[ed.key]||[]; list.splice(ed.idx,1); if(!list.length) delete customs[ed.key]; customsSave();
+  const m=model(ov); m.items.forEach((it,k)=>{ if(it.libreKey===ed.key){ const i=m.runs[k].i; if(ov[i]>=6||ov[i]==null){ delete ov[i]; delete lk[i]; } } });   // les numéros de variantes dessinées ont bougé
+  closeD(); render(); vmsg('Accord libre supprimé.');
+};
+const penBtn=(i,t)=>`<button class="ear pen" data-i="${i}" aria-label="Dessiner ou modifier ${esc(t)} à la main" title="Dessiner ou modifier cet accord à la main"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>`;
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ closeD(); closeT(); } });
+// ==/LIBRE==
+
 /* ===== 50-io-share.js ===== */
-function render(){ reconcileLocks(); if(tab=='g') renderG(); else {slotsHTML(); renderP();} applyLockUi(); scheduleSave(); listenCheck(); }
+function render(){ reconcileLocks(); togglesSync(); if(tab=='g') renderG(); else {slotsHTML(); renderP();} applyLockUi(); scheduleSave(); listenCheck(); }
 const hintG=$('hint').innerHTML;
 const hintP="Piano : la main droite (couleur principale) joue l'accord en choisissant le renversement qui bouge le moins d'un accord à l'autre ; la main gauche (orange) joue la basse, que vous pouvez jouer une ou deux octaves plus bas. Les accords identiques qui se suivent ne sont affichés qu'une fois (touchez une case de la grille pour placer un accord à ce temps). Cliquez sur un clavier pour changer de renversement. Une fois les bons renversements choisis, maintenez le cadenas appuyé pour verrouiller l'interface. Le petit cadenas sous un diagramme, maintenu appuyé, verrouille ce seul diagramme : il ne change plus, même si vous modifiez le reste de la grille. L'option « Doigts en place » colore en jaune les notes que l'accord précédent contient déjà. Le capo ne s'applique pas au piano. Le bouton sous chaque clavier fait entendre l'accord ; « Écouter la grille » joue toute la suite (chaque accord dure ce que la grille indique). Le son vient par défaut d'une petite banque de sons (SoundFont), téléchargée une fois puis gardée sur l'appareil ; sans elle, la page utilise des sons intégrés plus simples (réglage « Son »).";
 function setTab(t){
   tab=t; $('tabG').setAttribute('aria-selected',t=='g'); $('tabP').setAttribute('aria-selected',t=='p');
-  $('capoL').style.display=$('strgL').style.display=$('digL').style.display=t=='g'?'':'none'; $('sugg').style.display='none';
+  $('capoL').style.display=$('strgT').style.display=$('dgtT').style.display=t=='g'?'':'none'; $('sugg').style.display='none';
   $('hint').innerHTML=t=='g'?hintG:hintP; render();
 }
 $('tabG').onclick=()=>setTab('g'); $('tabP').onclick=()=>setTab('p');
@@ -617,7 +858,7 @@ $('tabG').onclick=()=>setTab('g'); $('tabP').onclick=()=>setTab('p');
 function buildExport(){
   const g=model(ov), p=modelP(ovP);
   return {app:'diagrammes-accords',schema:SCHEMA_VERSION,appVersion:APP_VERSION,dbVersion:DB_VERSION,exportedAt:new Date().toISOString(),
-    meter:BPB,bars:chords.length/BPB,events:eventsOf(chords),level:$('lvl').value,capo:+capoSel.value,tempo:+bpmSel.value,accompagnement:{style:accStyle.value||''},
+    meter:BPB,bars:chords.length/BPB,events:eventsOf(chords),level:$('lvl').value,capo:+capoSel.value,tempo:+bpmSel.value,accompagnement:{style:accStyle.value||''},libres:libresOut(),
     guitare:g.runs.map((r,k)=>{const c=g.chosen[k]; return {accord:r.t,mesure:barOf(r.i),temps:beatOf(r.i),duree:r.n,...(c?{frettes:c.f,doigts:c.g.join(''),barre:c.b,origine:ov[r.i]!=null?'manuel':'auto',...(lk[r.i]?{verrou:true}:{})}:{})};}),
     piano:p.runs.map((r,k)=>{const c=p.chosen[k]; return {accord:r.t,mesure:barOf(r.i),temps:beatOf(r.i),duree:r.n,...(c?{main_gauche:c.bm,main_droite:c.n,origine:ovP[r.i]!=null?'manuel':'auto',...(lkP[r.i]?{verrou:true}:{})}:{})};})};
 }
@@ -654,12 +895,14 @@ function applyImport(d){
   const r=normalizeImport(d); if(r.error) return {n:0,warnings:[]};
   const doc=r.doc, rc=resolveChords(doc), warnings=r.warnings.slice();
   if(!rc.chords.length) return {n:0,warnings};
+  setMeter(meterOf(doc)); meterSync(); accStyleFill();
   if(rc.bad.length) warnings.push(`${rc.bad.length} accord(s) non reconnu(s) ignoré(s) (mesure:temps ${rc.bad.join(', ')}).`);
   chords=rc.chords; ov={}; ovP={}; lk={}; lkP={};
   if(['full','easy'].includes(doc.level)) $('lvl').value=doc.level;
   capoSel.value=String(Math.min(7,Math.max(0,Math.round(+doc.capo||0))));
   if(Number.isFinite(+doc.tempo)&&+doc.tempo>0){ const o=[...bpmSel.options].map(x=>+x.value).reduce((a,b)=>Math.abs(b-doc.tempo)<Math.abs(a-doc.tempo)?b:a); bpmSel.value=String(o); }
   { const st=doc.accompagnement&&doc.accompagnement.style; if(typeof st==='string'&&[...accStyle.querySelectorAll('option')].some(o=>o.value===st)) accStyle.value=st; }
+  libresIn(doc.libres);   // les formes dessinées d'abord : les choix de doigtés ci-dessous peuvent y renvoyer
   const mk=(arr,f)=>(Array.isArray(arr)?arr:[]).filter(s=>s&&f(s)).map(s=>({...s,key:f(s)}));
   const lg=mk(doc.guitare,s=>Array.isArray(s.frettes)&&s.frettes.join()), lp=mk(doc.piano,s=>Array.isArray(s.main_droite)&&s.main_droite.join()+'|'+s.main_gauche);
   const lost=pinAll(lg,model,ov,c=>c.f.join())+pinAll(lp,modelP,ovP,c=>c.n.join()+'|'+c.bm);
@@ -681,17 +924,17 @@ $('impB').onclick=()=>$('imp').click();
 function jjswingSongToDoc(song){
   const warnings=[], bars=Array.isArray(song.bars)?song.bars.slice(0,MAX_BARS):[], arr=[]; let last=null, unknown=0;
   const st=song.settings||{};
-  if(+st.meter&&+st.meter!==BPB) return {error:`mesure à ${st.meter} temps : seul le 4/4 est géré pour l'instant`};
+  const w=meterOf(st); if(st.meter&&!METERS.includes(Math.round(parseFloat(st.meter)))) return {error:`mesure à ${st.meter} temps : seules les mesures à 3, 4, 5 ou 6 temps sont gérées`};
   bars.forEach(bar=>{
-    const L=(Array.isArray(bar)?bar:[]).filter(c=>c&&typeof c.name==='string'); const beats=Array(BPB).fill(null);
-    const k=Math.min(L.length,4), even=EVEN[k]||[];
+    const L=(Array.isArray(bar)?bar:[]).filter(c=>c&&typeof c.name==='string'); const beats=Array(w).fill(null);
+    const k=Math.min(L.length,w), even=evenPos(k,w);
     L.forEach((c,i)=>{
-      let t; if(c.at!==undefined&&c.at!==null&&c.at!==''){ const s=String(c.at), f=parseFloat(s.includes(':')?s.split(':')[1]:s); t=Number.isFinite(f)?Math.min(BPB-1,Math.max(0,Math.round(f-1+1e-9))):0; }
+      let t; if(c.at!==undefined&&c.at!==null&&c.at!==''){ const s=String(c.at), f=parseFloat(s.includes(':')?s.split(':')[1]:s); t=Number.isFinite(f)?Math.min(w-1,Math.max(0,Math.round(f-1+1e-9))):0; }
       else t=even[Math.min(i,even.length-1)]??0;
       const ok=SAFE_SYMBOL.test(c.name)&&parse(c.name)&&parse(c.name).q!==null;
       if(!ok){ unknown++; return; } beats[t]=c.name;
     });
-    let cur=beats[0]||last; for(let t=0;t<BPB;t++){ if(beats[t]) cur=beats[t]; arr.push(cur); }   // une mesure sans accord reconnu prolonge l'accord précédent
+    let cur=beats[0]||last; for(let t=0;t<w;t++){ if(beats[t]) cur=beats[t]; arr.push(cur); }   // une mesure sans accord reconnu prolonge l'accord précédent
     last=cur;
   });
   const first=arr.find(x=>x); if(!first) return {error:'aucun accord reconnu'};
@@ -699,7 +942,7 @@ function jjswingSongToDoc(song){
   if(arr.some(x=>!x)) return {error:'aucun accord reconnu'};
   if(unknown) warnings.push(`${unknown} accord(s) non reconnu(s)`);
   const bass=st.bass, style=typeof st.style==='string'&&st.style?st.style:(bass==='twofeel'?'jazz-twofeel':bass==='doubletime'?'jazz-double':'jazz-swing');
-  const doc={app:'diagrammes-accords',schema:SCHEMA_VERSION,meter:BPB,bars:arr.length/BPB,events:eventsOf(arr),level:'full',capo:0,tempo:+st.tempo||undefined,accompagnement:{style}};
+  const doc={app:'diagrammes-accords',schema:SCHEMA_VERSION,meter:w,bars:arr.length/w,events:eventsOf(arr,w),level:'full',capo:0,tempo:+st.tempo||undefined,accompagnement:{style}};
   return {doc,warnings};
 }
 function importJJSwingLibrary(json){
@@ -727,7 +970,7 @@ const b64d=s=>new TextDecoder().decode(Uint8Array.from(atob(s.replace(/-/g,'+').
 function buildShare(){
   const g=model(ov), p=modelP(ovP);
   const pick=(m,pins,f)=>m.runs.map((r,k)=>({r,c:m.chosen[k]})).filter(x=>x.c&&pins[x.r.i]!=null).map(x=>f(x.r,x.c));
-  return {app:'diagrammes-accords',schema:SCHEMA_VERSION,appVersion:APP_VERSION,meter:BPB,bars:chords.length/BPB,events:eventsOf(chords),level:$('lvl').value,capo:+capoSel.value,tempo:+bpmSel.value,accompagnement:{style:accStyle.value||''},tab,
+  return {app:'diagrammes-accords',schema:SCHEMA_VERSION,appVersion:APP_VERSION,meter:BPB,bars:chords.length/BPB,events:eventsOf(chords),libres:libresOut(),level:$('lvl').value,capo:+capoSel.value,tempo:+bpmSel.value,accompagnement:{style:accStyle.value||''},tab,
     guitare:pick(g,ov,(r,c)=>({accord:r.t,mesure:barOf(r.i),temps:beatOf(r.i),frettes:c.f,origine:'manuel',...(lk[r.i]?{verrou:true}:{})})),
     piano:pick(p,ovP,(r,c)=>({accord:r.t,mesure:barOf(r.i),temps:beatOf(r.i),main_gauche:c.bm,main_droite:c.n,origine:'manuel',...(lkP[r.i]?{verrou:true}:{})}))};
 }
@@ -810,13 +1053,28 @@ $('zIn').onclick=()=>stepZoom(1); $('zOut').onclick=()=>stepZoom(-1);
 
 const LOCK_MS=600; let lockTimer=null;
 const vmsg=t=>{ $('vmsg').textContent=t; };
+// Boutons à deux états (et choix à trois boutons) : chacun pilote un <select> ou une case caché(e), dont la valeur reste lue par le reste du code.
+function togglesSync(){
+  document.querySelectorAll('[data-for]').forEach(el=>{ const t=$(el.dataset.for); if(!t) return;
+    if(el.classList.contains('seg')) [...el.children].forEach(b=>{ b.setAttribute('aria-checked',String(b.dataset.v===t.value)); b.disabled=t.disabled; });
+    else { el.setAttribute('aria-checked',String(t.type==='checkbox'?t.checked:t.value===el.dataset.on)); el.disabled=t.disabled; } });
+}
+document.addEventListener('click',e=>{
+  const b=e.target.closest&&e.target.closest('button[data-for],.seg[data-for] button'); if(!b||b.disabled) return;
+  const seg=b.closest('.seg[data-for]'), t=$((seg||b).dataset.for); if(!t) return;
+  if(seg) t.value=b.dataset.v;
+  else if(t.type==='checkbox') t.checked=!t.checked;
+  else { const on=b.dataset.on, off=[...t.options].find(o=>o.value!==on).value; t.value=t.value===on?off:on; }
+  t.dispatchEvent(new Event('change')); togglesSync();
+});
 function applyLockUi(){
   document.documentElement.classList.toggle('locked',locked);
   const lb=$('lockB'); lb.setAttribute('aria-pressed',String(locked));
   lb.setAttribute('aria-label',locked?"Déverrouiller l'interface (appui long)":"Verrouiller l'interface (appui long)");
   lb.title=locked?'Appui long pour déverrouiller':'Appui long pour verrouiller';
   ['presets','libB','impB','lvl','capo','gapply','gtxt'].forEach(id=>{ $(id).disabled=locked; });
-  document.querySelectorAll('#slots button').forEach(b=>{ b.disabled=locked; });
+  document.querySelectorAll('#slots button,.meterrow button').forEach(b=>{ b.disabled=locked; });
+  togglesSync();
   document.querySelectorAll('#grid .card[data-i]').forEach(c=>c.setAttribute('aria-disabled',String(locked)));
   document.querySelectorAll('#grid .clk').forEach(b=>{ b.disabled=locked; });
 }
@@ -868,7 +1126,7 @@ const keyG=c=>c.f.join(), keyP=c=>c.n.join()+'|'+c.bm;
 const LK_O='<svg class="o" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 7.5-1.8"/></svg>';
 const LK_C='<svg class="c" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>';
 const lockBtn=(i,t,on)=>`<button class="clk${on?' on':''}" data-i="${i}" aria-pressed="${on}" aria-label="${on?'Déverrouiller':'Verrouiller'} ${esc(t)} (appui long)" title="Appui long pour ${on?'déverrouiller':'verrouiller'} ce diagramme">${LK_O}${LK_C}</button>`;
-const cardBar=(i,t,on)=>`<div class="cb">${earBtn(i,t)}${lockBtn(i,t,on)}</div>`;
+const cardBar=(i,t,on,pen)=>`<div class="cb">${earBtn(i,t)}${pen?penBtn(i,t):''}${lockBtn(i,t,on)}</div>`;
 // Après un ajout (i = -1) ou une suppression de l'accord i : seuls les choix verrouillés sont gardés, décalés si besoin ; les autres se recalculent.
 function keepLocked(i){
   [['ov','lk'],['ovP','lkP']].forEach(([a,b])=>{
@@ -1126,7 +1384,7 @@ const setSndMsg=t=>{ sndMsg.textContent=t; };
 let listening=false, listenSig='', nowI=-1, nowK=-1;
 
 /* ===== 75-listen-train.js ===== */
-const sigNow=()=>[tab,chords.join(),capoSel.value,$('lvl').value,JSON.stringify(ov),JSON.stringify(ovP)].join('|');
+const sigNow=()=>[BPB,tab,chords.join(),capoSel.value,$('lvl').value,JSON.stringify(ov),JSON.stringify(ovP)].join('|');
 function runOf(i){ let k=-1, prev=null; for(let j=0;j<=i;j++){ if(chords[j]!==prev){ k++; prev=chords[j]; } } return k; }   // numéro de la série (diagramme) qui contient le temps i
 function markNow(i,k){
   nowI=i; nowK=k; document.querySelectorAll('.now').forEach(e=>e.classList.remove('now'));
@@ -1177,7 +1435,8 @@ sndSel.onchange=()=>{
 };
 if(sndSel.value!=='builtin') Snd.sfFetch();   // dès l'ouverture : depuis le cache du service worker, c'est immédiat
 // --- Mode entraînement : métronome ou boîte à rythme, accord courant en grand, suivant en aperçu, compteur de changements par minute ---
-const trEl=$('tr'), trBpm=$('trBpm'), trRy=$('trRy'), trCh=$('trCh'), trBs=$('trBs'), trGo=$('trGo'), trDots=[...$('trBeats').children];
+const trEl=$('tr'), trBpm=$('trBpm'), trRy=$('trRy'), trCh=$('trCh'), trBs=$('trBs'), trPn=$('trPn'), trGo=$('trGo'); let trDots=[];
+function trBuildDots(){ const el=$('trBeats'); el.innerHTML='<i></i>'.repeat(BPB); trDots=[...el.children]; }   // un point par temps de la mesure en cours
 const tgOn=b=>b.getAttribute('aria-checked')==='true', tgSet=(b,v)=>b.setAttribute('aria-checked',String(!!v));   // bascule tactile (bouton) plutôt que petite case à cocher
 let training=false, trWait=false, trWake=null, trShown='';
 RHYTHMS.forEach(r=>{ const o=document.createElement('option'); o.value=r.id; o.textContent=r.name; trRy.appendChild(o); });
@@ -1225,19 +1484,22 @@ async function trStart(){
   }
   const m=tab==='g'?model(ov):modelP(ovP), kind=kindNow(), n=chords.length;
   const beats=chords.map((_,i)=>({notes:notesOf(m.chosen[runOf(i)])}));
+  const pm=modelP(ovP), keys=chords.map((_,i)=>{ const c=pm.chosen[runOf(i)]; return c?pianoNotes(c):[]; });   // clavier : les accords de piano de la grille (renversements choisis compris)
   trSetRunning(true);
   const ok=Snd.sequence(()=>60/trTempo(),n,(s,when)=>{
     const beat=s%BPB, bar=(s-beat)/BPB, d=60/trTempo(), rh=RHYTHMS.find(r=>r.id===trRy.value)||RHYTHMS[1];   // rythme et tempo se règlent en cours de route
-    rh.hits.forEach(([p,dr,f])=>{ if(p>=beat-1e-9&&p<beat+1-1e-9) Snd.drum(dr,when+(p-beat)*d,f); });
+    rh.hitsFor(BPB).forEach(([p,dr,f])=>{ if(p>=beat-1e-9&&p<beat+1-1e-9) Snd.drum(dr,when+(p-beat)*d,f); });
     if((beat===0||chords[s]!==chords[s-1])&&tgOn(trCh)){ Snd.release(when,0.05); const b=beats[s]; if(b.notes.length) Snd.chord(kind,b.notes,when); }
+    if(tgOn(trPn)){ const hits=compHits(rh.id,BPB).filter(p=>p>=beat-1e-9&&p<beat+1-1e-9); if(chords[s]!==chords[s-1]&&beat>0&&!hits.includes(beat)) hits.push(beat);
+      hits.forEach(p=>{ const t=when+(p-beat)*d; Snd.release(t,0.05,'piano'); if(keys[s].length) Snd.chord('piano',keys[s],t); }); }
     // basse : le motif du rythme, joué sur l'accord de ce temps ; la dernière figure de la mesure mène à l'accord qui ouvre la mesure suivante
-    if(tgOn(trBs)) bassLine(rh.id,parse(chords[s]),parse(chords[((bar+1)*BPB)%n])).forEach(([p,midi,len,f])=>{ if(p>=beat-1e-9&&p<beat+1-1e-9) Snd.bass(midi,when+(p-beat)*d,len*d*0.92,f); });
+    if(tgOn(trBs)) bassLine(rh.id,parse(chords[s]),parse(chords[((bar+1)*BPB)%n]),BPB).forEach(([p,midi,len,f])=>{ if(p>=beat-1e-9&&p<beat+1-1e-9) Snd.bass(midi,when+(p-beat)*d,len*d*0.92,f); });
   },{loop:true,onUi:s=>trShow(s),onEnd:()=>trSetRunning(false)});
   if(ok) Snd.drumsReady(); else { trSetRunning(false); $('trBar').textContent=NOSOUND; }
 }
 function trOpen(){
   if(accOn) stopAcc(); if(listening) stopListen(); Snd.stop();
-  trEl.classList.add('open'); trShown=''; trShow(-1); trCpm();
+  trEl.classList.add('open'); trShown=''; trBuildDots(); trShow(-1); trCpm();
   Snd.wantDrums=true; Snd.ready();   // l'ouverture est un geste : le synthé de la banque se construit tout de suite et préchauffe la batterie dès qu'il est prêt
   if(Snd.sf&&Snd.sfOn()) Snd.sfWarmDrums();
   trGo.focus();
@@ -1248,8 +1510,8 @@ const trSetTempo=v=>{ trBpm.value=Math.min(240,Math.max(30,Math.round(v)||80)); 
 $('trM').onclick=()=>trSetTempo(trTempo()-5); $('trP').onclick=()=>trSetTempo(trTempo()+5);
 trBpm.onchange=()=>trSetTempo(+trBpm.value); trBpm.oninput=trCpm;
 trRy.onchange=()=>pref('trRy',trRy.value);
-trCh.onclick=()=>{ tgSet(trCh,!tgOn(trCh)); pref('trCh',tgOn(trCh)?'1':'0'); }; trBs.onclick=()=>{ tgSet(trBs,!tgOn(trBs)); pref('trBs',tgOn(trBs)?'1':'0'); };
-{ const b=+pref('trBpm'); if(b>=30&&b<=240) trBpm.value=Math.round(b); const r=pref('trRy'); if(r&&RHYTHMS.some(x=>x.id===r)) trRy.value=r; else trRy.value='bin'; tgSet(trCh,pref('trCh')==='1'); tgSet(trBs,pref('trBs')==='1'); }
+trCh.onclick=()=>{ tgSet(trCh,!tgOn(trCh)); pref('trCh',tgOn(trCh)?'1':'0'); }; trPn.onclick=()=>{ tgSet(trPn,!tgOn(trPn)); pref('trPn',tgOn(trPn)?'1':'0'); }; trBs.onclick=()=>{ tgSet(trBs,!tgOn(trBs)); pref('trBs',tgOn(trBs)?'1':'0'); };
+{ const b=+pref('trBpm'); if(b>=30&&b<=240) trBpm.value=Math.round(b); const r=pref('trRy'); if(r&&RHYTHMS.some(x=>x.id===r)) trRy.value=r; else trRy.value='bin'; tgSet(trCh,pref('trCh')==='1'); tgSet(trBs,pref('trBs')==='1'); tgSet(trPn,pref('trPn')==='1'); }
 document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&trEl.classList.contains('open')) trClose(); });
 document.addEventListener('visibilitychange',()=>{ if(document.hidden&&accOn) stopAcc(); if(document.hidden&&listening) stopListen(); if(document.hidden&&training) trStop(); });   // en arrière-plan, les minuteurs sont ralentis : le tempo ne tiendrait plus
 // ==/AUDIO==
@@ -1266,10 +1528,20 @@ let accOn=false, accSig='', accSeed=1+Math.floor(Math.random()*99999), accBusy=f
 const accHas=typeof JJEngine!=='undefined';
 if(!accHas) accEl.style.display='none';
 else {
-  JJEngine.styles().forEach(s=>{ let g=[...accStyle.children].find(o=>o.label===s.group); if(!g){ g=document.createElement('optgroup'); g.label=s.group; accStyle.appendChild(g); } const o=document.createElement('option'); o.value=s.id; o.textContent=s.name; g.appendChild(o); });
-  { const v=pref('accStyle'); if(v&&[...accStyle.querySelectorAll('option')].some(o=>o.value===v)) accStyle.value=v; const c=pref('accCount'); if(c&&['0','1','2'].includes(c)) accCount.value=c;
+  { const v=pref('accStyle'); accStyleFill(v); const c=pref('accCount'); if(c&&['0','1','2'].includes(c)) accCount.value=c;
     Object.entries(accTg).forEach(([k,b])=>{ const p=pref('acc_'+k); if(p!==null) tgSet(b,p==='1'); }); }
 }
+// Les styles proposés dépendent de la mesure (le jazz sait jouer à 3, 4 et 5 temps ; la valse à 3 et 6 ; le pop/rock à 4)
+function accStyleFill(want){
+  if(!accHas) return; const keep=want||accStyle.value; accStyle.textContent='';
+  JJEngine.styles(engineMeter()).forEach(s=>{ let g=[...accStyle.children].find(o=>o.label===s.group); if(!g){ g=document.createElement('optgroup'); g.label=s.group; accStyle.appendChild(g); } const o=document.createElement('option'); o.value=s.id; o.textContent=s.name; g.appendChild(o); });
+  if(keep&&[...accStyle.querySelectorAll('option')].some(o=>o.value===keep)) accStyle.value=keep;
+}
+// Jeu du piano (options du moteur) : trois choix à boutons, mémorisés ; un changement pendant la lecture relance avec le même tirage
+const PJ={pjMode:['patterns','pianoMode'],pjApp:['none','pianoApp'],pjInt:['0','pianoInt']};
+const pjVal=id=>{ const b=document.querySelector('#'+id+' [aria-checked="true"]'); return b?b.dataset.v:PJ[id][0]; };
+Object.entries(PJ).forEach(([id,[def,key]])=>{ const box=$(id), v=pref(key); if(v&&[...box.children].some(b=>b.dataset.v===v)) [...box.children].forEach(b=>b.setAttribute('aria-checked',String(b.dataset.v===v)));
+  box.onclick=e=>{ const b=e.target.closest('button'); if(!b) return; [...box.children].forEach(x=>x.setAttribute('aria-checked',String(x===b))); pref(key,b.dataset.v); if(accOn){ stopAcc(); startAcc(); } }; });
 const accSetMsg=t=>{ accMsg.textContent=t; };
 function accSetRunning(on){ accOn=on; accB.textContent=on?'Arrêter':'Jouer avec accompagnement'; accB.setAttribute('aria-pressed',String(on)); if(on) accSig=sigNow(); else markNow(-1,-1); }
 function stopAcc(){ Snd.stop(); accSetRunning(false); accSetMsg(''); }
@@ -1284,8 +1556,8 @@ async function startAcc(){
   accBusy=true; accB.disabled=true; accSetMsg('Préparation…');
   try{
     await new Promise(r=>setTimeout(r,20));   // laisse l'écran afficher le message avant le calcul
-    const st=JJEngine.styles().find(s=>s.id===accStyle.value)||JJEngine.styles()[0], tempo=Math.min(300,Math.max(40,accTempo()));
-    const g=JJEngine.generate({chordText:engineText(chords),tempo,style:st.id,seed:accSeed});
+    const st=JJEngine.styles(engineMeter()).find(s=>s.id===accStyle.value)||JJEngine.styles(engineMeter())[0], tempo=Math.min(300,Math.max(40,accTempo()));
+    const g=JJEngine.generate({chordText:engineText(chords),tempo,style:st.id,seed:accSeed,meter:BPB,pianoMode:pjVal('pjMode'),pianoApproach:pjVal('pjApp'),pianoIntensity:+pjVal('pjInt'),pianoNotesPerBar:2});
     // la banque de sons : kit de batterie du style, notes de batterie préchauffées (une fois par kit)
     if(Snd.sfOn()){ const ps=[...new Set(g.events.filter(e=>e.track==='drums').map(e=>e.pitch))]; await new Promise(r=>Snd.sfWarmKit(g.kit,ps,r)); }
     else if(Snd.sf) Snd.setKit(g.kit);
@@ -1309,7 +1581,7 @@ async function startAcc(){
   accBusy=false; accB.disabled=false;
 }
 accB.onclick=()=>{ if(accOn) stopAcc(); else startAcc(); };
-accStyle.onchange=()=>{ pref('accStyle',accStyle.value); const st=JJEngine.styles().find(s=>s.id===accStyle.value); if(st){ const o=[...bpmSel.options].map(x=>+x.value).reduce((a,b)=>Math.abs(b-st.tempo)<Math.abs(a-st.tempo)?b:a); bpmSel.value=String(o); pref('bpm',bpmSel.value); }
+accStyle.onchange=()=>{ pref('accStyle',accStyle.value); const st=JJEngine.styles(engineMeter()).find(s=>s.id===accStyle.value); if(st){ const o=[...bpmSel.options].map(x=>+x.value).reduce((a,b)=>Math.abs(b-st.tempo)<Math.abs(a-st.tempo)?b:a); bpmSel.value=String(o); pref('bpm',bpmSel.value); }
   if(accOn){ stopAcc(); startAcc(); } };
 accCount.onchange=()=>pref('accCount',accCount.value);
 $('accNew').onclick=()=>{ accSeed=1+Math.floor(Math.random()*99999); if(accOn){ stopAcc(); startAcc(); } else accSetMsg('Nouvelle version prête : elle sera jouée au prochain départ.'); };
@@ -1328,6 +1600,7 @@ function scheduleSave(){
   saveTimer=setTimeout(()=>{ const s=JSON.stringify(currentDoc()); if(s!==baseline) pref(CUR_KEY,s); },300);
 }
 function startup(){
+  customsLoad();
   if(/^#s=/.test(location.hash)){ loadFromHash(); return; }   // un lien partagé prime, sans écraser la dernière grille tant qu'on n'y touche pas
   let d=null; try{ d=JSON.parse(pref(CUR_KEY)||'null'); }catch(_){}
   const r=d?applyImport(d):{n:0,warnings:[]};
