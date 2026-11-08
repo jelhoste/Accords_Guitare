@@ -1,6 +1,6 @@
 // Mise en cache de l'appli pour un usage hors ligne (modèle : build.mjs remplace les deux constantes VERSION et ASSETS ci-dessous).
 // Stratégie : copie en cache servie tout de suite, mise à jour en arrière-plan. Les gros fichiers (sons, vendor) ont leur propre cache.
-const VERSION='fe793c4ef2';
+const VERSION='5a2ce420cc';
 const CACHE='accords-'+VERSION;
 const SOUNDS='accords-sons-1';   // à changer SEULEMENT quand un fichier de vendor/ ou de sons/ est remplacé
 const ASSETS=["./","./index.html","./app.js","./engine.js","./app.css","./theme.css","./manifest.webmanifest","./icon-192.png","./icon-512.png","./icon-maskable-512.png","./apple-touch-icon.png"];

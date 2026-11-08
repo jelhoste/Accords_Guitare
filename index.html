@@ -36,6 +36,8 @@
 <button class="tg" id="dgtT" role="switch" aria-checked="false" data-for="dgt" data-on="1" title="Numéros de doigts dans les ronds">Numéros de doigts</button>
 <button class="tg" id="pvtT" role="switch" aria-checked="false" data-for="pvt" data-on="1" title="Colore en jaune ce qui ne bouge pas d'un accord au suivant">Doigts en place</button>
 <span class="inl">Thème<span class="seg" id="thmSeg" role="radiogroup" aria-label="Thème" data-for="thm"><button role="radio" data-v="auto" aria-checked="false">Auto</button><button role="radio" data-v="light" aria-checked="false">Clair</button><button role="radio" data-v="dark" aria-checked="false">Sombre</button></span></span>
+<button class="tg" id="ctlT" role="switch" aria-checked="false" data-for="ctl" data-on="37" title="Boutons de 37 px au lieu de 44 px, police réduite en proportion (réglage de cet appareil)">Boutons compacts</button>
+<select id="ctl" hidden><option value="44">44 px</option><option value="37">37 px</option></select>
 <select id="lvl" hidden><option value="full">Complet</option><option value="easy">Simplifié</option></select>
 <select id="strg" hidden><option value="0">Uniformes</option><option value="1">Réalistes</option></select>
 <select id="dgt" hidden><option value="1">Affichés</option><option value="0">Masqués</option></select>
@@ -70,14 +72,14 @@
 </div>
 <div id="trBeats" class="trbeats" aria-hidden="true"></div>
 <div id="trBar" class="hint"></div>
-<div class="tools" role="group" aria-label="Réglages de l'entraînement">
-<button id="trGo" aria-pressed="false">Démarrer</button>
-<label>Tempo (battements par minute)<span class="trbpm"><button class="sec" id="trM" aria-label="Moins vite">−</button><input type="number" id="trBpm" min="30" max="240" value="80" inputmode="numeric"><button class="sec" id="trP" aria-label="Plus vite">+</button></span></label>
-<label>Rythme<select id="trRy"></select></label>
-<div class="mrow"><span id="trMeterLab">Mesure</span><div id="trMeterSeg" class="seg" role="radiogroup" aria-labelledby="trMeterLab"></div></div>
-<span class="tgs" role="group" aria-label="Pistes"><button class="tg" id="trCh" role="switch" aria-checked="false">Faire sonner l'accord</button>
-<button class="tg" id="trBs" role="switch" aria-checked="false">Ligne de basse</button>
-<button class="tg" id="trPn" role="switch" aria-checked="false" title="Joue les accords du piano choisis dans la grille, en rythme">Clavier</button></span>
+<div class="trset" role="group" aria-label="Réglages de l'entraînement">
+<div class="trline"><button id="trGo" aria-pressed="false">Démarrer</button></div>
+<div class="trline"><span class="lab" id="trTL">Tempo</span><span class="trbpm" role="group" aria-labelledby="trTL"><button class="sec" id="trM" aria-label="Moins vite">−</button><input type="number" id="trBpm" min="30" max="240" value="80" inputmode="numeric" aria-label="Battements par minute"><button class="sec" id="trP" aria-label="Plus vite">+</button></span><span class="hint" style="margin:0" title="battements par minute">bpm</span></div>
+<div class="trline"><label for="trRy">Rythme</label><select id="trRy"></select></div>
+<div class="trline"><span class="lab" id="trMeterLab">Mesure</span><div id="trMeterSeg" class="seg" role="radiogroup" aria-labelledby="trMeterLab"></div></div>
+<div class="trline"><span class="lab" id="trTkL">Pistes</span><span class="tgs" role="group" aria-labelledby="trTkL"><button class="tg" id="trCh" role="switch" aria-checked="false">Accord</button>
+<button class="tg" id="trBs" role="switch" aria-checked="false">Basse</button>
+<button class="tg" id="trPn" role="switch" aria-checked="false" title="Joue les accords du piano choisis dans la grille, en rythme">Clavier</button></span></div>
 </div>
 <div id="trCpm" class="hint" aria-live="polite"></div>
 <p class="hint">Réglez le tempo et le rythme, puis appuyez sur « Démarrer » : la grille tourne en boucle, les accords suivent la grille, temps par temps. L'accord suivant s'encadre au dernier temps pour vous laisser changer à temps. « Ligne de basse » ajoute une basse qui suit le rythme (en shabada, une basse qui « marche » vers l'accord suivant). Le nombre de changements d'accord par minute se calcule d'après le tempo et la grille.</p>
@@ -110,7 +112,7 @@
 <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="dT">
 <div class="sh"><strong id="dT">Accord libre</strong><button class="sec" id="dhear" aria-label="Écouter ce diagramme" title="Écouter ce diagramme">Écouter</button><button class="sec" id="dcancel">Fermer</button></div>
 <p class="hint" id="dsub" style="margin:0 0 8px"></p>
-<div id="dfb"></div>
+<div id="dfb" class="dsvg"></div>
 <div class="drow"><span class="stp" role="group" aria-label="Case de départ"><button class="sec" id="dsm" aria-label="Case de départ plus basse">−</button><span id="dstart" aria-live="polite">Case 1</span><button class="sec" id="dsp" aria-label="Case de départ plus haute">+</button></span><button class="tg" id="dbar" role="switch" aria-checked="false">Barré</button><button class="sec" id="dclr">Effacer</button></div>
 <p class="hint" id="dwarn" aria-live="polite" style="margin:8px 0 0"></p>
 <div class="acts"><button id="dsave">Enregistrer</button><button class="sec" id="ddel">Supprimer ce diagramme</button></div>

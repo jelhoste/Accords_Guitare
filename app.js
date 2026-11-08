@@ -51,7 +51,7 @@ function structureToChord(s){
 // Versions. APP_VERSION : l'appli (semver). SCHEMA_VERSION : format des fichiers d'export et des liens de partage (entier, +1 à chaque
 // changement incompatible ; les ajouts de champs ne le changent pas). Format 3 : la grille est une suite d'ÉVÉNEMENTS d'accords placés
 // à (mesure, temps) ; un accord dure jusqu'à l'événement suivant. Aucune lecture des formats 1 et 2 (jamais publiés).
-const APP_VERSION='2.1.1', SCHEMA_VERSION=3, DB_VERSION='chords-db 0.5.1';
+const APP_VERSION='2.2.0', SCHEMA_VERSION=3, DB_VERSION='chords-db 0.5.1';
 let BPB=4; const MAX_BARS=128, METERS=[3,4,5,6];   // temps par mesure (3, 4, 5 ou 6 ; réglé par setMeter, écrit dans le champ « meter » des fichiers), mesures au plus
 const meterOf=d=>{ const m=Math.round(parseFloat(d&&d.meter)); return METERS.includes(m)?m:4; };   // « 3 », 3 ou « 3/4 » -> 3 ; absent ou inconnu -> 4
 const setMeter=m=>{ BPB=METERS.includes(m)?m:4; };
@@ -394,11 +394,11 @@ function solve(items,NC,TR){
 }
 // Dessin SVG
 const STR_W=[1.54,1.26,0.98,0.73,0.6,0.6]; // épaisseur des 6 cordes, de la plus grave (mi) à la plus aiguë (mi) : 70 % des valeurs de la 1.2.0, sauf les deux plus fines, identiques (0,6)
-function svg(c,prev){
+function svg(c,prev,st){
   const pvb=!!(prev&&prev.b&&c.b&&prev.b[0]===c.b[0]&&prev.b[1]===c.b[1]&&prev.b[2]===c.b[2]);   // même barré que l'accord précédent
   const X=i=>16+i*12.1, top=24, fh=15, rows=5;   // écart entre cordes : 12,1 (+10 % par rapport à 11)
   const fr=c.f.filter(x=>x>0), mx=fr.length?Math.max(...fr):0, mn=fr.length?Math.min(...fr):1;
-  const start=mx<=5?1:mn;
+  const start=st||(mx<=5?1:mn);
   let s=`<svg viewBox="0 0 100 106" role="img" aria-label="diagramme" fill="none" stroke="currentColor" stroke-width="1">`;
   for(let i=0;i<6;i++) s+=`<line x1="${X(i)}" y1="${top}" x2="${X(i)}" y2="${top+rows*fh}"${thick?` stroke-width="${STR_W[i]}"`:''}/>`;
   for(let j=0;j<=rows;j++) s+=`<line x1="${X(0)}" y1="${top+j*fh}" x2="${X(5)}" y2="${top+j*fh}" ${j==0&&start==1?'stroke-width="3"':''}/>`;
@@ -779,15 +779,17 @@ function drawCheck(key,f){
 }
 let ed=null;   // {key,run,idx,f,fg,barre,start}
 const STR_NAMES=['Mi','La','Ré','Sol','Si','Mi'];
+// Même dessin que les diagrammes de la page (svg), avec des zones tactiles posées dessus : cordes (en haut, muette / à vide) et cases (doigts).
+const DX=i=>16+i*12.1, D_TOP=24, D_FH=15, D_W=100, D_H=106;
 function drawFret(){
-  const {g,b,warn}=fingerData(ed.f,ed.barre,ed.fg);
-  let h='<div class="fb" role="group" aria-label="Manche de la guitare : touchez une case pour poser un doigt">';
-  h+='<span class="fl"></span>'+ed.f.map((x,i)=>`<button class="fh" data-s="${i}" aria-label="Corde ${6-i} (${STR_NAMES[i]}) : ${x<0?'muette':x===0?'à vide':'case '+x}. Toucher pour changer">${x<0?'×':x===0?'○':'·'}</button>`).join('');
-  for(let r=0;r<5;r++){ const fr=ed.start+r;
-    h+=`<span class="fl">${fr}</span>`+ed.f.map((x,i)=>`<button class="fc${r===0&&ed.start===1?' nut':''}" data-s="${i}" data-r="${fr}" aria-label="Corde ${6-i}, case ${fr}${x===fr?' : doigt posé'+(g[i]?' (doigt '+g[i]+')':''):''}">${x===fr?`<span class="dot">${g[i]||''}</span>`:''}</button>`).join('');
-  }
-  if(b){ const r=b[0]-ed.start; if(r>=0&&r<5) h+=`<span class="barre" style="grid-column:${6-b[1]+2}/${6-b[2]+3};grid-row:${r+2}"></span>`; }
-  h+='<span class="fl"></span>'+STR_NAMES.map(n=>`<span class="sn">${n}</span>`).join('')+'</div>';
+  const {g,b,warn}=fingerData(ed.f,ed.barre,ed.fg), c={f:ed.f.map(x=>x>=ed.start&&x<=ed.start+4||x<=0?x:-1),g,b};
+  const d0=digits; digits=true; const art=svg(c,null,ed.start); digits=d0;   // les numéros de doigts restent visibles dans l'éditeur
+  const pc=v=>(v*100).toFixed(2)+'%', z=(x,y,w,h,attrs,label)=>`<button class="z" style="left:${pc(x/D_W)};top:${pc(y/D_H)};width:${pc(w/D_W)};height:${pc(h/D_H)}" ${attrs} aria-label="${label}"></button>`;
+  let h=art;
+  for(let i=0;i<6;i++){ const x=ed.f[i];
+    h+=z(DX(i)-6.05,0,12.1,D_TOP,`data-s="${i}"`,`Corde ${6-i} (${STR_NAMES[i]}) : ${x<0?'muette':x===0?'à vide':'case '+x}. Toucher pour changer`);
+    for(let r=0;r<5;r++){ const fr=ed.start+r;
+      h+=z(DX(i)-6.05,D_TOP+r*D_FH,12.1,D_FH,`data-s="${i}" data-r="${fr}"`,`Corde ${6-i}, case ${fr}${x===fr?' : doigt posé'+(g[i]?' (doigt '+g[i]+')':''):''}`); } }
   $('dfb').innerHTML=h;
   $('dstart').textContent='Case '+ed.start; $('dsm').disabled=ed.start<=1; $('dsp').disabled=ed.start>=FRET_MAX-4;
   tgSet($('dbar'),ed.barre);
@@ -812,7 +814,7 @@ function openDraw(k){
 const closeD=()=>{ $('dsheet').classList.remove('open'); ed=null; };
 $('dfb').onclick=e=>{
   const b=e.target.closest('button'); if(!b||!ed) return; const s=+b.dataset.s;
-  if(b.classList.contains('fh')) ed.f[s]=ed.f[s]===-1?0:-1;
+  if(b.dataset.r===undefined) ed.f[s]=ed.f[s]===-1?0:-1;
   else { const r=+b.dataset.r; if(ed.f[s]===r) ed.fg[s]=(ed.fg[s]+1)%5; else { ed.f[s]=r; ed.fg[s]=0; } }
   if(!ed.f.some(x=>x>0)) ed.barre=false;
   drawFret();
@@ -1054,6 +1056,9 @@ $('zIn').onclick=()=>stepZoom(1); $('zOut').onclick=()=>stepZoom(-1);
 const LOCK_MS=600; let lockTimer=null;
 const vmsg=t=>{ $('vmsg').textContent=t; };
 // Boutons à deux états (et choix à trois boutons) : chacun pilote un <select> ou une case caché(e), dont la valeur reste lue par le reste du code.
+// Taille des commandes (par appareil) : 44 px par défaut, 37 px au choix
+{ const v=pref('ctl'); if(v==='37'){ $('ctl').value='37'; document.documentElement.dataset.ctl='compact'; } }
+$('ctl').onchange=()=>{ const c=$('ctl').value==='37'; if(c) document.documentElement.dataset.ctl='compact'; else delete document.documentElement.dataset.ctl; pref('ctl',$('ctl').value); };
 function togglesSync(){
   document.querySelectorAll('[data-for]').forEach(el=>{ const t=$(el.dataset.for); if(!t) return;
     if(el.classList.contains('seg')) [...el.children].forEach(b=>{ b.setAttribute('aria-checked',String(b.dataset.v===t.value)); b.disabled=t.disabled; });
