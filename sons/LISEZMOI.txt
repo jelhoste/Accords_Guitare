@@ -1,0 +1,4 @@
+note-all.sf3 : petite banque de sons (SoundFont 3, 2,7 Mo) extraite de GeneralUser GS 2.0.3 par S. Christian Collins (http://www.schristiancollins.com) : piano, guitare nylon, guitare acier, guitare électrique, basses, cordes, vents et un kit de batterie.
+Les échantillons ont été recodés en Ogg Vorbis pour réduire le poids ; les réglages des sons sont inchangés.
+Licence : voir LICENSE-GeneralUser-GS.txt (usage, modification et redistribution permis ; l'auteur demande de ne pas faire de lien direct vers ses fichiers : cette copie est locale).
+Ces fichiers sont lus par vendor/ (SpessaSynth). Pour les remplacer par une autre banque, voir LISEZ-MOI.txt à la racine, section « Banque de sons ».

@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Accords et accompagnement</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#17696a">
+<link rel="icon" href="icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Accords">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="stylesheet" href="app.css">
+<link rel="stylesheet" href="theme.css">
+</head>
+<body>
+<body>
+<main>
+<div id="printHead" class="print-only"></div>
+<h1>Diagrammes d'accords</h1>
+<p class="lead">Composez votre grille mesure par mesure (une case par temps) : la page choisit pour chaque accord le doigté le plus facile à enchaîner pour un débutant.</p>
+<div class="panel">
+<div class="tools"><button class="sec" id="presets">Grilles types (blues, pop…)</button><button class="sec" id="libB">Mes grilles</button><button class="sec" id="exp">Exporter</button><button class="sec" id="impB">Importer</button><button id="shr">Partager</button><button class="sec" id="prtB">Imprimer</button><input type="file" id="imp" accept=".json,application/json" hidden><span id="msg" class="hint" style="margin:0" aria-live="polite"></span></div>
+<div id="slots" class="chips" aria-label="Grille d'accords : une case par temps"></div>
+<details id="txtBox" class="gtxt"><summary>Saisir ou copier la grille en texte</summary>
+<p class="hint" style="margin:6px 0">Mesures séparées par « | » ; plusieurs accords dans une mesure se partagent les temps ; « % » : l'accord continue ; « . » : un temps de plus pour l'accord (ex. « Am . . F »).</p>
+<textarea id="gtxt" rows="3" spellcheck="false" aria-label="Grille en texte" style="width:100%;font:inherit"></textarea>
+<div class="acts"><button id="gapply">Appliquer le texte</button><span id="gmsg" class="hint" style="margin:0" aria-live="polite"></span></div></details>
+<div class="row">
+<label>Niveau<select id="lvl"><option value="full">Complet (7, maj7, m7)</option><option value="easy">Simplifié (accords de base)</option></select></label>
+<label id="capoL">Capo<select id="capo"></select></label>
+<label id="strgL">Cordes<select id="strg"><option value="0">Uniformes</option><option value="1">Épaisseurs réalistes</option></select></label>
+<label id="digL">Chiffres dans les ronds<select id="dgt"><option value="1">Affichés</option><option value="0">Masqués</option></select></label>
+<label>Thème<select id="thm"><option value="auto">Auto</option><option value="light">Clair</option><option value="dark">Sombre</option></select></label>
+<label>Doigts en place<select id="pvt"><option value="0">Masqués</option><option value="1">Affichés</option></select></label>
+
+</div>
+<div id="sugg"><span id="suggT"></span><button id="suggB">Appliquer</button></div>
+</div>
+<div class="tabs"><div class="tl" role="tablist"><button role="tab" id="tabG" aria-selected="true">Guitare</button><button role="tab" id="tabP" aria-selected="false">Piano</button></div>
+<div class="vt" role="group" aria-label="Affichage"><button class="sec" id="zOut" aria-label="Réduire les diagrammes" title="Réduire les diagrammes">−</button><span id="zLab" aria-live="polite">100 %</span><button class="sec" id="zIn" aria-label="Agrandir les diagrammes" title="Agrandir les diagrammes">+</button><button class="sec" id="lockB" aria-pressed="false" aria-label="Verrouiller l'interface (appui long)" title="Appui long pour verrouiller"><svg class="ic-open" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 7.5-1.8"/></svg><svg class="ic-closed" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></button></div></div>
+<div class="tools" id="listen" role="group" aria-label="Écoute"><button id="playB" aria-pressed="false">Écouter la grille</button><label class="inl">Tempo<select id="bpm"><option>50</option><option>60</option><option>70</option><option selected>80</option><option>90</option><option>100</option><option>110</option><option>120</option><option>130</option><option>140</option><option>150</option><option>160</option><option>180</option><option>200</option><option>220</option></select></label><label class="inl"><input type="checkbox" id="loopB"> En boucle</label><label class="inl">Son<select id="snd"><option value="sf-steel">Banque : guitare acier</option><option value="sf-nylon">Banque : guitare nylon</option><option value="builtin">Intégré (léger)</option></select></label><span id="sndMsg" class="hint" style="margin:0" aria-live="polite"></span><button id="trainB" class="sec" aria-haspopup="dialog">Entraînement</button></div>
+<div class="tools" id="acc" role="group" aria-label="Accompagnement automatique">
+<button id="accB" aria-pressed="false">Jouer avec accompagnement</button>
+<label class="inl">Style<select id="accStyle"></select></label>
+<label class="inl">Décompte<select id="accCount"><option value="0">Aucun</option><option value="1">1 mesure</option><option value="2">2 mesures</option></select></label>
+<button class="sec" id="accNew" title="Régénère l'accompagnement (basse, batterie, piano) avec d'autres variations">Nouvelle version</button>
+<span class="tgs" role="group" aria-label="Pistes jouées"><button class="tg" id="accBs" role="switch" aria-checked="true">Basse</button><button class="tg" id="accDr" role="switch" aria-checked="true">Batterie</button><button class="tg" id="accPn" role="switch" aria-checked="true">Piano</button><button class="tg" id="accGt" role="switch" aria-checked="false" title="Joue aussi les diagrammes affichés (guitare ou piano selon l'onglet)">Diagrammes</button></span>
+<span id="accMsg" class="hint" style="margin:0" aria-live="polite"></span>
+</div>
+<div id="tr" role="dialog" aria-modal="true" aria-labelledby="trT">
+<div class="trin">
+<div class="sh"><strong id="trT">Entraînement</strong><button class="sec" id="trX">Fermer</button></div>
+<div class="trstage">
+<div class="trcur"><small class="hint">Accord en cours</small><div id="trCur" class="trname">–</div><div id="trDia" class="trdia"></div></div>
+<div class="trnext" id="trNext"><small class="hint">Ensuite</small><div id="trNxt" class="trname2">–</div><div id="trNDia" class="trdia"></div></div>
+</div>
+<div id="trBeats" class="trbeats" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+<div id="trBar" class="hint"></div>
+<div class="tools" role="group" aria-label="Réglages de l'entraînement">
+<button id="trGo" aria-pressed="false">Démarrer</button>
+<label>Tempo (battements par minute)<span class="trbpm"><button class="sec" id="trM" aria-label="Moins vite">−</button><input type="number" id="trBpm" min="30" max="240" value="80" inputmode="numeric"><button class="sec" id="trP" aria-label="Plus vite">+</button></span></label>
+<label>Rythme<select id="trRy"></select></label>
+<button class="tg" id="trCh" role="switch" aria-checked="false">Faire sonner l'accord</button>
+<button class="tg" id="trBs" role="switch" aria-checked="false">Ligne de basse</button>
+</div>
+<div id="trCpm" class="hint" aria-live="polite"></div>
+<p class="hint">Réglez le tempo et le rythme, puis appuyez sur « Démarrer » : la grille tourne en boucle, une mesure de quatre temps par accord. L'accord suivant s'encadre au dernier temps pour vous laisser changer à temps. « Ligne de basse » ajoute une basse qui suit le rythme (en shabada, une basse qui « marche » vers l'accord suivant). Le nombre de changements d'accord par minute se calcule d'après le tempo et la grille.</p>
+</div></div>
+<div id="vmsg" class="hint" aria-live="polite"></div>
+<div id="grid" aria-live="polite"></div>
+<p class="hint" id="hint">Touchez une case de la grille pour placer un accord à ce temps : il dure jusqu'au prochain changement. Les accords identiques qui se suivent ne sont affichés qu'une fois (ex. « 4 mesures », « 2 temps »). Cliquez sur un diagramme pour passer à une autre variante : le reste de la grille se recalcule autour de votre choix. Une fois les bons diagrammes choisis, maintenez le cadenas appuyé pour verrouiller l'interface. Le petit cadenas sous un diagramme, maintenu appuyé, verrouille ce seul diagramme : il ne change plus, même si vous modifiez le reste de la grille. L'option « Doigts en place » colore en jaune les doigts qui ne bougent pas par rapport à l'accord précédent. Avec un capo, les diagrammes se lisent à partir du capo (case 0). Pour une basse différente de la fondamentale (ex. C/G), la page utilise un diagramme d'inversion quand la base en contient un, sinon la forme sans inversion.<br>Le bouton sous chaque diagramme fait entendre l'accord ; « Écouter la grille » joue toute la suite (chaque accord dure ce que la grille indique) avec le son de l'instrument affiché. Le son vient par défaut d'une petite banque de sons (SoundFont), téléchargée une fois puis gardée sur l'appareil ; sans elle, la page utilise des sons intégrés plus simples (réglage « Son »).<br>Doigtés : base de données <a href="https://github.com/tombatossals/chords-db" rel="noopener" style="color:inherit;display:inline-block;padding:14px 6px;margin:-14px -6px">chords-db</a> © 2016 David Rubert, licence MIT (complétée par quelques formes ajoutées à la main).</p>
+<p class="hint" id="ver" style="margin-top:4px"></p>
+</main>
+<div id="lsheet"><div class="back" id="lback"></div>
+<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="lT">
+<div class="sh"><strong id="lT">Mes grilles</strong><button id="lok">Fermer</button></div>
+<div class="acts" style="margin-top:0"><input class="lk" id="lname" placeholder="Nom de la grille" maxlength="60" aria-label="Nom de la grille" style="flex:1;min-width:10em"><button id="lsave">Enregistrer la grille actuelle</button></div>
+<div id="llist" style="margin-top:12px;max-height:46vh;overflow-y:auto"></div>
+<p class="hint" id="lmsg" aria-live="polite" style="margin:8px 0 0"></p>
+</div></div>
+<div id="ssheet"><div class="back" id="sback"></div>
+<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sT">
+<div class="sh"><strong id="sT">Partager cette grille</strong><button id="sok">Fermer</button></div>
+<p class="hint" style="margin:0 0 8px">Le lien contient la grille, le niveau, le capo et vos choix de doigtés : la personne qui l'ouvre arrive directement sur votre version.</p>
+<input class="lk" id="slink" readonly aria-label="Lien de partage">
+<div class="acts"><button id="scopy">Copier le lien</button><a id="smail" href="#">E-mail</a><a id="sgm" href="#" target="_blank" rel="noopener">Gmail</a><button class="sec" id="snat">Partager…</button><span id="sfb" class="hint" style="margin:0" aria-live="polite"></span></div>
+<p class="hint" id="swarn" style="margin-bottom:0"></p>
+</div></div>
+<div id="psheet"><div class="back" id="pback"></div>
+<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="pT">
+<div class="sh"><strong id="pT">Grilles types</strong><button id="pok">Fermer</button></div>
+<div class="cols p2" id="pcols"></div></div></div>
+<div id="sheet"><div class="back" id="back"></div>
+<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetT">
+<div class="sh"><strong id="sheetT"></strong><button class="sec" id="prv" aria-label="Temps précédent" title="Temps précédent">←</button><button class="sec" id="nxt" aria-label="Temps suivant" title="Temps suivant">→</button><button class="sec" id="hear" aria-label="Écouter l'accord" title="Écouter l'accord"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7"/><path d="M19 6a8.5 8.5 0 0 1 0 12"/></svg></button><button class="sec" id="del" title="Le temps reprend l'accord précédent">Retirer le changement</button><button class="sec" id="delBar">Supprimer la mesure</button><button id="ok">OK</button></div>
+<div class="cols" id="cols"></div></div></div>
+
+<script src="engine.js"></script>
+<script src="app.js"></script>
+<script>if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('./sw.js').catch(()=>{});});}</script>
+</body>
+</html>

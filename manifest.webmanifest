@@ -1,0 +1,32 @@
+{
+ "id": "./",
+ "name": "Diagrammes d'accords",
+ "short_name": "Accords",
+ "lang": "fr",
+ "description": "Diagrammes d'accords de guitare choisis pour un enchaînement facile, pour débutants.",
+ "start_url": "./",
+ "scope": "./",
+ "display": "standalone",
+ "background_color": "#f2f5f6",
+ "theme_color": "#17696a",
+ "icons": [
+  {
+   "src": "icon-192.png",
+   "sizes": "192x192",
+   "type": "image/png",
+   "purpose": "any"
+  },
+  {
+   "src": "icon-512.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "any"
+  },
+  {
+   "src": "icon-maskable-512.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "maskable"
+  }
+ ]
+}

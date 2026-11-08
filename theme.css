@@ -1,0 +1,55 @@
+/* ==========================================================================
+   THEME.CSS : personnalisation de l'apparence
+   Ce fichier est chargé APRÈS les styles de l'appli : ce que tu écris ici
+   remplace les valeurs par défaut. Décommente et modifie ce dont tu as besoin.
+   ========================================================================== */
+
+/* --- Couleurs (mode clair, et mode sombre si tu n'ajoutes rien plus bas) --- */
+/*
+:root {
+  --bg: #f2f5f6;          fond de la page
+  --panel: #ffffff;       fond des panneaux et des cartes
+  --ink: #16222b;         texte principal
+  --muted: #5d6b75;       texte secondaire
+  --line: #cfd8dd;        bordures
+  --accent: #17696a;      couleur principale (notes, boutons, onglet actif)
+  --accent-ink: #ffffff;  texte posé sur la couleur principale
+  --warn: #fff3d6;        encadré de suggestion de capo
+  --bass: #d9731f;        basse (main gauche du piano)
+  --pivot: #e0a100;       doigts / notes qui restent en place (option « Doigts en place »)
+  --pivot-ink: #1b242b;   texte posé sur cette couleur
+}
+*/
+
+/* --- Piano --- */
+/*
+:root {
+  --key: #fdfdfd;         touches blanches
+  --blackkey: #1b242b;    touches noires
+  --keyline: #8a98a1;     contour des touches
+}
+*/
+
+/* --- Formes et typographie --- */
+/*
+:root {
+  --radius: 10px;                                  arrondi des panneaux (les boutons en dérivent)
+  --font-body: "Segoe UI", system-ui, sans-serif;  texte
+  --font-title: Georgia, serif;                    titre
+}
+*/
+
+/* --- Valeurs différentes en mode sombre --- */
+/*
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) {
+    --bg: #10171c; --panel: #18222a; --ink: #e6edf1; --muted: #93a4af;
+    --line: #2d3b45; --accent: #4fb8b2; --accent-ink: #082523;
+  }
+}
+*/
+
+/* --- Forcer un mode : l'appli pose data-theme="light" ou "dark" sur <html> --- */
+/*
+:root[data-theme="dark"] { --accent: #4fb8b2; }
+*/
